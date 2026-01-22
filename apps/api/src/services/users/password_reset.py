@@ -9,7 +9,7 @@ from pydantic import EmailStr
 from sqlmodel import Session, select
 from src.db.organizations import Organization, OrganizationRead
 from src.security.security import security_hash_password
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from src.services.users.emails import (
     send_password_reset_email,
 )
@@ -49,8 +49,8 @@ async def send_reset_password_code(
         )
 
     # Redis init
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
 
     if not redis_conn_string:
         raise HTTPException(
@@ -144,8 +144,8 @@ async def change_password_with_reset_code(
         )
 
     # Redis init
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
 
     if not redis_conn_string:
         raise HTTPException(

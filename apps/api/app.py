@@ -1,7 +1,7 @@
 import uvicorn
 import logfire
 from fastapi import FastAPI, Request
-from config.config import LearnHouseConfig, get_learnhouse_config
+from config.config import NexoConfig, get_nexo_config
 from src.core.events.events import shutdown_app, startup_app
 from src.router import v1_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,32 +15,24 @@ from src.core.ee_hooks import register_ee_middlewares
 ########################
 # Pre-Alpha Version 0.1.0
 # Author: @swve
-# (c) LearnHouse 2022
+# (c) Nexo Academy 2024
 ########################
 
-# Get LearnHouse Config
-learnhouse_config: LearnHouseConfig = get_learnhouse_config()
+# Get Nexo Academy Config
+nexo_config: NexoConfig = get_nexo_config()
 
 # Global Config
 app = FastAPI(
-    title=learnhouse_config.site_name,
-    description=learnhouse_config.site_description,
-    docs_url="/docs" if learnhouse_config.general_config.development_mode else None,
-    redoc_url="/redoc" if learnhouse_config.general_config.development_mode else None,
+    title=nexo_config.site_name,
+    description=nexo_config.site_description,
+    docs_url="/docs" if nexo_config.general_config.development_mode else None,
+    redoc_url="/redoc" if nexo_config.general_config.development_mode else None,
     version="0.1.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=learnhouse_config.hosting_config.allowed_regexp,
-    allow_methods=["*"],
-    allow_credentials=True,
-    allow_headers=["*"],
-)
-
 # Only enable logfire if explicitly configured
-if learnhouse_config.general_config.logfire_enabled:
-    logfire.configure(console=False, service_name=learnhouse_config.site_name,)
+if nexo_config.general_config.logfire_enabled:
+    logfire.configure(console=False, service_name=nexo_config.site_name,)
     logfire.instrument_fastapi(app)
     # Instrument database after logfire is configured
     from src.core.events.database import engine
@@ -51,6 +43,32 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Register EE Middlewares if available
 register_ee_middlewares(app)
+
+# CORS should wrap the entire app (including any EE middlewares) so headers are present
+# even when an inner middleware raises an exception.
+dev_origin_regex = (
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+    if nexo_config.general_config.development_mode
+    else None
+)
+app.add_middleware(
+    CORSMiddleware,
+    # Prefer explicit origins when provided (more reliable than regex; fixes dev CORS issues).
+    allow_origins=nexo_config.hosting_config.allowed_origins
+    if getattr(nexo_config.hosting_config, "allowed_origins", None)
+    else [],
+    # In local dev, accept both localhost and 127.0.0.1 on any port (avoids CORS mismatch headaches).
+    allow_origin_regex=dev_origin_regex
+    if dev_origin_regex
+    else (
+        None
+        if getattr(nexo_config.hosting_config, "allowed_origins", None)
+        else nexo_config.hosting_config.allowed_regexp
+    ),
+    allow_methods=["*"],
+    allow_credentials=True,
+    allow_headers=["*"],
+)
 
 
 # Events
@@ -78,12 +96,12 @@ if __name__ == "__main__":
     uvicorn.run(
         "app:app",
         host="0.0.0.0",
-        port=learnhouse_config.hosting_config.port,
-        reload=learnhouse_config.general_config.development_mode,
+        port=nexo_config.hosting_config.port,
+        reload=nexo_config.general_config.development_mode,
     )
 
 
 # General Routes
 @app.get("/")
 async def root():
-    return {"Message": "Welcome to LearnHouse ✨"}
+    return {"Message": "Welcome to Nexo Academy ✨"}

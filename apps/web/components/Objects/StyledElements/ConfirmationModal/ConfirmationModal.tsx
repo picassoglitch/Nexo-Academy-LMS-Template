@@ -9,7 +9,7 @@ type ModalParams = {
   confirmationMessage: string
   confirmationButtonText: string
   dialogTitle: string
-  functionToExecute: any
+  functionToExecute: () => Promise<any> | any
   dialogTrigger?: React.ReactNode
   status?: 'warning' | 'info'
   buttonid?: string
@@ -17,6 +17,7 @@ type ModalParams = {
 
 const ConfirmationModal = (params: ModalParams) => {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [isWorking, setIsWorking] = React.useState(false)
   const warningColors = 'bg-red-100 text-red-600'
   const infoColors = 'bg-blue-100 text-blue-600'
   const warningButtonColors = 'text-white bg-red-500 hover:bg-red-600'
@@ -38,6 +39,10 @@ const ConfirmationModal = (params: ModalParams) => {
       <Dialog.Portal>
         <DialogOverlay />
         <DialogContent>
+          {/* Radix Dialog requires a Title for accessibility */}
+          <Dialog.Title className="sr-only">{params.dialogTitle || 'Confirmation'}</Dialog.Title>
+          {/* And a Description for aria-describedby */}
+          <Dialog.Description className="sr-only">{params.confirmationMessage}</Dialog.Description>
           <div className="flex space-x-4 tracking-tight">
             <div
               className={`icon p-6 rounded-xl flex items-center align-content-center ${
@@ -58,8 +63,10 @@ const ConfirmationModal = (params: ModalParams) => {
                 {params.confirmationMessage}
               </div>
               <div className="flex flex-row-reverse mt-4">
-                <div
+                <button
                   id={params.buttonid}
+                  type="button"
+                  disabled={isWorking}
                   className={`rounded-md text-sm px-3 py-2 font-bold flex justify-center items-center hover:cursor-pointer ${
                     params.status === 'warning'
                       ? warningButtonColors
@@ -67,13 +74,18 @@ const ConfirmationModal = (params: ModalParams) => {
                   }
                                 hover:shadow-lg transition duration-300 ease-in-out
                                 `}
-                  onClick={() => {
-                    params.functionToExecute()
-                    setIsDialogOpen(false)
+                  onClick={async () => {
+                    try {
+                      setIsWorking(true)
+                      await params.functionToExecute()
+                      setIsDialogOpen(false)
+                    } finally {
+                      setIsWorking(false)
+                    }
                   }}
                 >
-                  {params.confirmationButtonText}
-                </div>
+                  {isWorking ? 'Working…' : params.confirmationButtonText}
+                </button>
               </div>
             </div>
           </div>

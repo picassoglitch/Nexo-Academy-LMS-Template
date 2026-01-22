@@ -1,5 +1,5 @@
 'use client'
-import learnhouseIcon from 'public/learnhouse_bigicon_1.png'
+import nexoIcon from 'public/learnhouse_bigicon_1.png'
 import Image from 'next/image'
 import { getOrgLogoMediaDirectory } from '@services/media/media'
 import Link from 'next/link'
@@ -62,7 +62,7 @@ function SignUpClient(props: SignUpClientProps) {
               quality={100}
               width={30}
               height={30}
-              src={learnhouseIcon}
+              src={nexoIcon}
               alt=""
             />
           </Link>
@@ -77,7 +77,7 @@ function SignUpClient(props: SignUpClientProps) {
                     props.org.org_uuid,
                     props.org?.logo_image
                   )}`}
-                  alt="LearnHouse"
+                  alt="Nexo Academy"
                   style={{ width: 'auto', height: 70 }}
                   className="rounded-xl shadow-xl inset-0 ring-1 ring-inset ring-black/10 bg-white"
                 />
@@ -86,7 +86,7 @@ function SignUpClient(props: SignUpClientProps) {
                   quality={100}
                   width={70}
                   height={70}
-                  src={learnhouseIcon}
+                  src={nexoIcon}
                   alt=""
                 />
               )}

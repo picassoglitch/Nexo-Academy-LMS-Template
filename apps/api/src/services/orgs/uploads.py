@@ -52,3 +52,16 @@ async def upload_org_landing_content(file: UploadFile, org_uuid: str) -> str:
         filename_prefix="landing",
         max_size=50 * 1024 * 1024  # 50MB
     )
+
+
+async def upload_org_favicon(file: UploadFile, org_uuid: str) -> str:
+    """Upload organization favicon."""
+    return await upload_file(
+        file=file,
+        directory="favicons",
+        type_of_dir="orgs",
+        uuid=org_uuid,
+        allowed_types=["image"],
+        filename_prefix="favicon",
+        max_size=2 * 1024 * 1024,  # 2MB
+    )

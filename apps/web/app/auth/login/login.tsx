@@ -1,5 +1,5 @@
 'use client'
-import learnhouseIcon from 'public/learnhouse_bigicon_1.png'
+import nexoIcon from 'public/learnhouse_bigicon_1.png'
 import FormLayout, {
   FormField,
   FormLabelAndMessage,
@@ -102,7 +102,7 @@ const LoginClient = (props: LoginClientProps) => {
               quality={100}
               width={30}
               height={30}
-              src={learnhouseIcon}
+              src={nexoIcon}
               alt=""
             />
           </Link>
@@ -117,7 +117,7 @@ const LoginClient = (props: LoginClientProps) => {
                     props.org.org_uuid,
                     props.org?.logo_image
                   )}`}
-                  alt="Learnhouse"
+                  alt="Nexo Academy"
                   style={{ width: 'auto', height: 70 }}
                   className="rounded-xl shadow-xl inset-0 ring-1 ring-inset ring-black/10 bg-white"
                 />
@@ -126,7 +126,7 @@ const LoginClient = (props: LoginClientProps) => {
                   quality={100}
                   width={70}
                   height={70}
-                  src={learnhouseIcon}
+                  src={nexoIcon}
                   alt=""
                 />
               )}

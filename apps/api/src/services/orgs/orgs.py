@@ -36,7 +36,7 @@ from src.db.organizations import (
 )
 from fastapi import HTTPException, UploadFile, status, Request
 
-from src.services.orgs.uploads import upload_org_logo, upload_org_preview, upload_org_thumbnail, upload_org_landing_content
+from src.services.orgs.uploads import upload_org_logo, upload_org_preview, upload_org_thumbnail, upload_org_landing_content, upload_org_favicon
 
 
 async def get_organization(
@@ -386,6 +386,46 @@ async def update_org_with_config_no_auth(
     return {"detail": "Organization updated"}
 
 
+async def update_org_config(
+    request: Request,
+    orgconfig: OrganizationConfigBase,
+    org_id: int,
+    current_user: PublicUser | AnonymousUser,
+    db_session: Session,
+):
+    statement = select(Organization).where(Organization.id == org_id)
+    org = db_session.exec(statement).first()
+
+    if not org:
+        raise HTTPException(
+            status_code=404,
+            detail="Organization slug not found",
+        )
+
+    # RBAC check
+    await rbac_check(request, org.org_uuid, current_user, "update", db_session)
+
+    # Get org config
+    statement = select(OrganizationConfig).where(OrganizationConfig.org_id == org.id)
+    org_config = db_session.exec(statement).first()
+
+    if org_config is None:
+        logging.error(f"Organization {org_id} has no config")
+        raise HTTPException(
+            status_code=404,
+            detail="Organization config not found",
+        )
+
+    org_config.config = json.loads(orgconfig.json())
+    org_config.update_date = str(datetime.now())
+
+    db_session.add(org_config)
+    db_session.commit()
+    db_session.refresh(org_config)
+
+    return {"detail": "Organization config updated"}
+
+
 async def update_org_logo(
     request: Request,
     logo_file: UploadFile,
@@ -481,6 +521,48 @@ async def update_org_preview(
 
     # Upload logo
     name_in_disk = await upload_org_preview(preview_file, org.org_uuid)
+
+    return {"name_in_disk": name_in_disk}
+
+
+async def update_org_favicon(
+    request: Request,
+    favicon_file: UploadFile,
+    org_id: str,
+    current_user: PublicUser | AnonymousUser,
+    db_session: Session,
+):
+    statement = select(Organization).where(Organization.id == org_id)
+    org = db_session.exec(statement).first()
+
+    if not org:
+        raise HTTPException(
+            status_code=404,
+            detail="Organization not found",
+        )
+
+    # RBAC check
+    await rbac_check(request, org.org_uuid, current_user, "update", db_session)
+
+    name_in_disk = await upload_org_favicon(favicon_file, org.org_uuid)
+
+    # Update org config.general.favicon_image and clear explicit URL (optional)
+    statement = select(OrganizationConfig).where(OrganizationConfig.org_id == org.id)
+    org_config = db_session.exec(statement).first()
+    if org_config is None:
+        raise HTTPException(status_code=404, detail="Organization config not found")
+
+    updated = OrganizationConfigBase(**org_config.config)
+    updated.general.favicon_image = name_in_disk
+    # If you upload a file, prefer it over an old external URL
+    updated.general.favicon_url = None
+
+    org_config.config = json.loads(updated.json())
+    org_config.update_date = str(datetime.now())
+
+    db_session.add(org_config)
+    db_session.commit()
+    db_session.refresh(org_config)
 
     return {"name_in_disk": name_in_disk}
 

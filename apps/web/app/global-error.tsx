@@ -9,7 +9,7 @@ export default function GlobalError({
   reset,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  reset?: () => void;
 }) {
   useEffect(() => {
     // Check if it's a Server Action version mismatch error
@@ -37,7 +37,10 @@ export default function GlobalError({
                 </div>
             )}
             <button 
-                onClick={() => reset()}
+                onClick={() => {
+                  if (typeof reset === 'function') reset()
+                  else window.location.reload()
+                }}
                 className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-sm"
             >
                 <RefreshCcw size={18} />

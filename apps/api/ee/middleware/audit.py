@@ -3,7 +3,7 @@ import json
 import logging
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from ee.services.audit import queue_audit_log, resolve_org_id, is_enterprise_plan
+from ee.services.audit import queue_audit_log, resolve_org_id, get_redis_client
 from src.db.users import PublicUser
 from src.core.events.database import engine
 from sqlmodel import Session
@@ -128,7 +128,6 @@ class EEAuditLogMiddleware(BaseHTTPMiddleware):
 
         # Try to resolve org_id BEFORE the action (essential for DELETE)
         org_id = None
-        is_enterprise = False
         with Session(engine) as session:
             # 1. Try from captured payload
             if isinstance(payload, dict):
@@ -137,10 +136,6 @@ class EEAuditLogMiddleware(BaseHTTPMiddleware):
             # 2. Try from path/query data collected
             if org_id is None:
                 org_id = resolve_org_id(session, path_query_data)
-            
-            # Check if this organization is on the enterprise plan
-            if org_id:
-                is_enterprise = is_enterprise_plan(session, org_id)
 
         # Proceed with the request
         response: Response = await call_next(request)
@@ -152,8 +147,8 @@ class EEAuditLogMiddleware(BaseHTTPMiddleware):
 
         action = f"{request.method} {path}"
 
-        # Queue the log asynchronously only if it's an enterprise org
-        if is_enterprise:
+        # Queue the log asynchronously (if Redis is available) for any org.
+        if org_id and get_redis_client():
             asyncio.create_task(queue_audit_log(
                 user_id=user_id,
                 org_id=org_id,

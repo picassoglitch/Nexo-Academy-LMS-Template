@@ -1,7 +1,60 @@
 'use client'
 import React from 'react'
-import { LandingObject, LandingSection, LandingHeroSection, LandingTextAndImageSection, LandingLogos, LandingPeople, LandingBackground, LandingButton, LandingImage, LandingFeaturedCourses } from './landing_types'
-import { Plus, Trash2, GripVertical, LayoutTemplate, ImageIcon, Users, Award, Edit, Link, Upload, Save, BookOpen, TextIcon } from 'lucide-react'
+import {
+  LandingAboutSection,
+  LandingCommunitySection,
+  LandingFaqSection,
+  LandingFinalCtaSection,
+  LandingFooterSection,
+  LandingHeroLeadMagnetSection,
+  LandingHowItWorksSection,
+  LandingObject,
+  LandingPricingSection,
+  LandingSchemaVersion,
+  LandingSection,
+  LandingTestimonialsGridSection,
+  LandingTrustSection,
+  LandingHeroSection,
+  LandingTextAndImageSection,
+  LandingLogos,
+  LandingPeople,
+  LandingBackground,
+  LandingButton,
+  LandingImage,
+  LandingFeaturedCourses,
+  LandingAccentColorKey,
+  LandingNavbarConfig,
+  LandingColoredTextSegment,
+  LandingHowItWorksStep,
+  LandingPricingPlan,
+  LandingPricingFeature,
+  LandingTrustCard,
+  LandingFaqItem,
+  LandingFooterColumn,
+} from './landing_types'
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  LayoutTemplate,
+  ImageIcon,
+  Users,
+  Award,
+  Edit,
+  Link,
+  Upload,
+  Save,
+  BookOpen,
+  TextIcon,
+  Sparkles,
+  ShieldCheck,
+  MessageSquareQuote,
+  ListChecks,
+  BadgeDollarSign,
+  HelpCircle,
+  Megaphone,
+  PanelBottom,
+} from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { Input } from "@components/ui/input"
 import { Textarea } from "@components/ui/textarea"
@@ -17,33 +70,102 @@ import toast from 'react-hot-toast'
 import useSWR from 'swr'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs"
 import { useTranslation } from 'react-i18next'
+import {
+  AboutEditor,
+  CommunityEditor,
+  FaqEditor,
+  FinalCtaEditor,
+  FooterEditor,
+  HeroLeadMagnetEditor,
+  HowItWorksEditor,
+  PricingEditor,
+  TestimonialsGridEditor,
+  TrustEditor,
+} from './PremiumLandingEditors'
+
+const tr = (t: any, key: string, fallback: string) => {
+  const v = t(key)
+  return v === key ? fallback : v
+}
 
 // This will be created inside the component to access translations
 const getSectionTypes = (t: any) => ({
   hero: {
     icon: LayoutTemplate,
-    label: t('dashboard.organization.landing.section_types.hero.label'),
-    description: t('dashboard.organization.landing.section_types.hero.description')
+    label: tr(t, 'dashboard.organization.landing.section_types.hero.label', 'Hero (legacy)'),
+    description: tr(t, 'dashboard.organization.landing.section_types.hero.description', 'Legacy hero section')
   },
   'text-and-image': {
     icon: ImageIcon,
-    label: t('dashboard.organization.landing.section_types.text_and_image.label'),
-    description: t('dashboard.organization.landing.section_types.text_and_image.description')
+    label: tr(t, 'dashboard.organization.landing.section_types.text_and_image.label', 'Text + Image (legacy)'),
+    description: tr(t, 'dashboard.organization.landing.section_types.text_and_image.description', 'Legacy text section')
   },
   logos: {
     icon: Award,
-    label: t('dashboard.organization.landing.section_types.logos.label'),
-    description: t('dashboard.organization.landing.section_types.logos.description')
+    label: tr(t, 'dashboard.organization.landing.section_types.logos.label', 'Logos (legacy)'),
+    description: tr(t, 'dashboard.organization.landing.section_types.logos.description', 'Legacy logos section')
   },
   people: {
     icon: Users,
-    label: t('dashboard.organization.landing.section_types.people.label'),
-    description: t('dashboard.organization.landing.section_types.people.description')
+    label: tr(t, 'dashboard.organization.landing.section_types.people.label', 'People (legacy)'),
+    description: tr(t, 'dashboard.organization.landing.section_types.people.description', 'Legacy people section')
   },
   'featured-courses': {
     icon: BookOpen,
-    label: t('dashboard.organization.landing.section_types.featured_courses.label'),
-    description: t('dashboard.organization.landing.section_types.featured_courses.description')
+    label: tr(t, 'dashboard.organization.landing.section_types.featured_courses.label', 'Featured Courses (legacy)'),
+    description: tr(t, 'dashboard.organization.landing.section_types.featured_courses.description', 'Legacy courses section')
+  },
+
+  // v2 Nexus premium landing sections
+  heroLeadMagnet: {
+    icon: Sparkles,
+    label: 'Hero + Lead Magnet',
+    description: 'Hero 2-column + lead magnet card'
+  },
+  about: {
+    icon: ShieldCheck,
+    label: 'Quiénes Somos',
+    description: 'About section with bullets + video pill'
+  },
+  testimonialsGrid: {
+    icon: MessageSquareQuote,
+    label: 'Historias de Éxito',
+    description: 'Testimonials 2x2 grid'
+  },
+  howItWorks: {
+    icon: ListChecks,
+    label: 'Cómo Funciona',
+    description: '4-step process cards'
+  },
+  pricing: {
+    icon: BadgeDollarSign,
+    label: 'Pricing',
+    description: '3-tier pricing with highlighted PRO'
+  },
+  trust: {
+    icon: ShieldCheck,
+    label: 'Por Qué Confiar',
+    description: 'Trust grid + security row'
+  },
+  community: {
+    icon: Users,
+    label: 'Comunidad',
+    description: 'Community CTA section'
+  },
+  faq: {
+    icon: HelpCircle,
+    label: 'FAQ',
+    description: 'Accordion FAQ'
+  },
+  finalCta: {
+    icon: Megaphone,
+    label: 'CTA Final',
+    description: 'Final call-to-action gradient'
+  },
+  footer: {
+    icon: PanelBottom,
+    label: 'Footer',
+    description: 'Footer columns + newsletter'
   }
 }) as const
 
@@ -134,19 +256,62 @@ const OrgEditLanding = () => {
   
   const [isLandingEnabled, setIsLandingEnabled] = React.useState(false)
   const [landingData, setLandingData] = React.useState<LandingObject>({
+    schemaVersion: 2,
     sections: [],
-    enabled: false
+    enabled: false,
+    navbar: {
+      brandTitle: 'NEXUS',
+      brandSubtitle: 'INTELIGENCIA ARTIFICIAL',
+      links: [
+        { label: 'Inicio', href: '#inicio' },
+        { label: 'Programas', href: '#programas' },
+        { label: 'Cómo Funciona', href: '#como-funciona' },
+        { label: 'Comunidad', href: '#comunidad' },
+        { label: 'Quiénes Somos', href: '#quienes-somos' },
+        { label: 'Precios', href: '#precios' },
+        { label: 'FAQ', href: '#faq' },
+      ],
+      ctaLabel: 'Iniciar Sesión',
+      ctaHref: '/login',
+    },
   })
   const [selectedSection, setSelectedSection] = React.useState<number | null>(null)
   const [isSaving, setIsSaving] = React.useState(false)
+
+  // Safety: if sections change (delete/reorder) and the selected index becomes invalid,
+  // avoid crashing the editor by clearing the selection.
+  React.useEffect(() => {
+    if (selectedSection === null) return
+    if (!landingData.sections?.[selectedSection]) {
+      setSelectedSection(null)
+    }
+  }, [selectedSection, landingData.sections])
 
   // Initialize landing data from org config
   React.useEffect(() => {
     if (org?.config?.config?.landing) {
       const landingConfig = org.config.config.landing
+      const hasV2Section =
+        Array.isArray(landingConfig.sections) &&
+        landingConfig.sections.some((s: any) =>
+          [
+            'heroLeadMagnet',
+            'about',
+            'testimonialsGrid',
+            'howItWorks',
+            'pricing',
+            'trust',
+            'community',
+            'faq',
+            'finalCta',
+            'footer',
+          ].includes(s?.type)
+        )
       setLandingData({
         sections: landingConfig.sections || [],
-        enabled: landingConfig.enabled || false
+        enabled: landingConfig.enabled || false,
+        schemaVersion: (landingConfig.schemaVersion as LandingSchemaVersion) || (hasV2Section ? 2 : 1),
+        navbar: landingConfig.navbar || landingData.navbar,
       })
       setIsLandingEnabled(landingConfig.enabled || false)
     }
@@ -162,6 +327,231 @@ const OrgEditLanding = () => {
 
   const createEmptySection = (type: string): LandingSection => {
     switch (type) {
+      // v2 premium landing defaults (safe placeholders)
+      case 'heroLeadMagnet':
+        return {
+          type: 'heroLeadMagnet',
+          id: 'inicio',
+          headline: [
+            { text: 'Aprende a usar IA para generar ', colorKey: 'neutral' },
+            { text: 'ingresos reales', colorKey: 'blue' },
+            { text: ', con guías probadas y una ', colorKey: 'neutral' },
+            { text: 'comunidad que te respalda', colorKey: 'orange' },
+          ],
+          subtitle:
+            'Educación práctica enfocada en ejecución. Únete a emprendedores que buscan aplicar IA de forma ética y medible.',
+          // Tip: to send traffic to the qualification quiz, use a relative href like "./diagnostico"
+          primaryCta: { label: 'Empieza a ganar dinero', href: '#precios' },
+          secondaryCta: { label: 'Ver Cómo Funciona', href: '#como-funciona' },
+          videoUrl: 'https://www.youtube.com/embed/ABC123',
+          videoCard: {
+            badgeText: 'Video de 3 minutos',
+            title: '¿Listo para generar ingresos reales con IA?',
+            subtitle:
+              'Mira este video de 3 minutos y descubre cómo emprendedores como tú ya están facturando miles de pesos extra al mes.',
+            ctaLabel: 'Empieza a ganar dinero ahora',
+          },
+          leadMagnet: {
+            title: 'Guía Gratis de IA',
+            subtitle: 'Recibe una guía práctica y editable para empezar hoy.',
+            emailPlaceholder: 'Tu email',
+            buttonLabel: 'Descargar Guía Gratis',
+            microcopy: 'Sin spam. Puedes darte de baja en cualquier momento.',
+            badgeText: '+2,500 descargas esta semana',
+          },
+        }
+      case 'about':
+        return {
+          type: 'about',
+          id: 'quienes-somos',
+          title: 'Quiénes Somos',
+          headline: 'Aprendizaje práctico con enfoque en ejecución',
+          bullets: [
+            'Contenido accionable y actualizado',
+            'Comunidad para dudas y accountability',
+            'Recursos y plantillas para implementar',
+          ],
+          videoLabel: 'Video: Conoce más sobre Nexo…',
+          body: [
+            'Construimos un espacio para aprender y aplicar IA con criterio, ética y foco en resultados medibles.',
+            'Ajusta este texto desde el builder para reflejar tu historia real y tu propuesta de valor.',
+          ],
+        }
+      case 'testimonialsGrid':
+        return {
+          type: 'testimonialsGrid',
+          title: 'Historias de Éxito Reales',
+          items: [
+            {
+              name: 'Ana P.',
+              role: 'Emprendedora',
+              location: 'MX',
+              quote: 'El enfoque práctico me ayudó a pasar de ideas a ejecución.',
+              metricLabel: 'Resultado',
+              metricValue: 'Más claridad y constancia',
+              colorKey: 'blue',
+            },
+            {
+              name: 'Luis M.',
+              role: 'Freelancer',
+              location: 'CO',
+              quote: 'Plantillas y comunidad = avance sostenido.',
+              metricLabel: 'Resultado',
+              metricValue: 'Procesos más eficientes',
+              colorKey: 'orange',
+            },
+            {
+              name: 'Carla R.',
+              role: 'Marketer',
+              location: 'ES',
+              quote: 'Aprendí a probar, medir y mejorar.',
+              metricLabel: 'Resultado',
+              metricValue: 'Mejores experimentos',
+              colorKey: 'green',
+            },
+            {
+              name: 'Diego S.',
+              role: 'Operador',
+              location: 'AR',
+              quote: 'Me dio un sistema, no solo teoría.',
+              metricLabel: 'Resultado',
+              metricValue: 'Sistema de ejecución',
+              colorKey: 'purple',
+            },
+          ],
+        }
+      case 'howItWorks':
+        return {
+          type: 'howItWorks',
+          id: 'como-funciona',
+          title: 'Cómo Funciona',
+          steps: [
+            { title: 'Aprendes', body: 'Entiendes lo esencial con guías claras.', iconKey: 'BookOpen', colorKey: 'blue' },
+            { title: 'Implementas', body: 'Aplicas con plantillas y ejemplos.', iconKey: 'Wrench', colorKey: 'orange' },
+            { title: 'Ajustas', body: 'Mides, iteras y mejoras el sistema.', iconKey: 'LineChart', colorKey: 'green' },
+            { title: 'Escalas', body: 'Estandarizas y creces con soporte.', iconKey: 'Rocket', colorKey: 'purple' },
+          ],
+        }
+      case 'pricing':
+        return {
+          type: 'pricing',
+          id: 'precios',
+          title: 'Elige cómo quieres avanzar',
+          subtitle: 'Selecciona el plan que mejor se adapte a tu etapa.',
+          plans: [
+            {
+              name: 'Starter',
+              price: '$299',
+              period: 'USD',
+              accent: 'neutral',
+              badge: '',
+              features: [
+                { text: 'Acceso a guías base', state: 'included' },
+                { text: 'Comunidad', state: 'included' },
+                { text: 'Soporte prioritario', state: 'excluded' },
+              ],
+              buttonLabel: 'Empezar',
+              buttonHref: '#',
+            },
+            {
+              name: 'PRO',
+              price: '$999',
+              period: 'USD',
+              accent: 'orange',
+              badge: 'Más popular',
+              features: [
+                { text: 'Todo en Starter', state: 'included' },
+                { text: 'Plantillas avanzadas', state: 'included' },
+                { text: 'Sesiones en vivo', state: 'included' },
+              ],
+              buttonLabel: 'Elegir PRO',
+              buttonHref: '#',
+            },
+            {
+              name: 'Operator',
+              price: '$3,999',
+              period: 'USD',
+              accent: 'neutral',
+              badge: '',
+              features: [
+                { text: 'Acompañamiento', state: 'included' },
+                { text: 'Revisión de implementación', state: 'included' },
+                { text: 'SOPs y sistemas', state: 'included' },
+              ],
+              buttonLabel: 'Hablar con ventas',
+              buttonHref: '#',
+            },
+          ],
+          footerHighlights: ['Garantía 30 días', 'Acceso inmediato', 'Pago seguro'],
+        }
+      case 'trust':
+        return {
+          type: 'trust',
+          title: 'Por Qué Confiar en Nosotros',
+          cards: [
+            { title: 'Metodología práctica', body: 'Enfoque en ejecución, no solo teoría.', iconKey: 'Check' },
+            { title: 'Iteración', body: 'Mejoras con métricas y feedback.', iconKey: 'RefreshCcw' },
+            { title: 'Comunidad', body: 'Acompañamiento y dudas resueltas.', iconKey: 'Users' },
+            { title: 'Recursos', body: 'Plantillas y guías listas para usar.', iconKey: 'FileText' },
+            { title: 'Actualizaciones', body: 'Contenido actualizado regularmente.', iconKey: 'Sparkles' },
+            { title: 'Seguridad', body: 'Pagos seguros y protección.', iconKey: 'ShieldCheck' },
+          ],
+          trustRow: ['Pago seguro', 'Stripe', 'SSL Encriptado'],
+        }
+      case 'community':
+        return {
+          type: 'community',
+          id: 'comunidad',
+          title: 'Accede a Nuestra Comunidad Privada',
+          bullets: ['Soporte entre miembros', 'Feedback y accountability', 'Recursos compartidos'],
+          testimonial: {
+            quote: 'Sentí progreso real al compartir avances y recibir feedback.',
+            name: 'Miembro Nexo',
+            meta: 'Testimonio editable',
+          },
+          buttonLabel: 'Únete a la comunidad',
+          buttonHref: '#',
+        }
+      case 'faq':
+        return {
+          type: 'faq',
+          id: 'faq',
+          title: 'Preguntas Frecuentes',
+          items: [
+            { q: '¿Cuándo obtengo acceso?', a: 'Inmediatamente después del pago confirmado.' },
+            { q: '¿Hay garantía?', a: 'Sí, revisa las condiciones del plan.' },
+            { q: '¿Puedo cancelar?', a: 'Puedes cancelar tu suscripción cuando quieras.' },
+            { q: '¿Necesito experiencia previa?', a: 'No, empezamos desde lo esencial.' },
+            { q: '¿Cómo recibo soporte?', a: 'A través de la comunidad y recursos incluidos.' },
+          ],
+        }
+      case 'finalCta':
+        return {
+          type: 'finalCta',
+          title: [
+            { text: '¿Listo para generar ingresos con IA ', colorKey: 'blue' },
+            { text: 'de forma ética y práctica?', colorKey: 'orange' },
+          ],
+          subtitle: 'Únete hoy y empieza a ejecutar con guía y comunidad.',
+          primaryCta: { label: 'Únete a Nexo hoy', href: '#precios' },
+          secondaryCta: { label: 'Ver Cómo Funciona', href: '#como-funciona' },
+        }
+      case 'footer':
+        return {
+          type: 'footer',
+          columns: [
+            { title: 'Nexus', links: [{ label: 'Inicio', href: '#inicio' }, { label: 'Comunidad', href: '#comunidad' }] },
+            { title: 'Programas', links: [{ label: 'Precios', href: '#precios' }, { label: 'Cómo Funciona', href: '#como-funciona' }] },
+            { title: 'Información', links: [{ label: 'FAQ', href: '#faq' }, { label: 'Quiénes Somos', href: '#quienes-somos' }] },
+          ],
+          newsletter: {
+            title: 'Newsletter',
+            placeholder: 'Tu email',
+            buttonLabel: 'Suscribirme',
+            microcopy: 'Contenido práctico. Sin spam.',
+          },
+          copyright: '© Nexus. Todos los derechos reservados.',
+        }
       case 'hero':
         return {
           type: 'hero',
@@ -260,7 +650,9 @@ const OrgEditLanding = () => {
     try {
       const res = await updateOrgLanding(org.id, {
         sections: landingData.sections,
-        enabled: isLandingEnabled
+        enabled: isLandingEnabled,
+        schemaVersion: landingData.schemaVersion || 1,
+        navbar: landingData.navbar,
       }, access_token)
 
       if (res.status === 200) {
@@ -309,6 +701,157 @@ const OrgEditLanding = () => {
 
         {isLandingEnabled && (
           <>
+            {/* Premium landing navbar config (editable, no JSX hardcoding) */}
+            <div className="rounded-xl border border-gray-200 bg-white p-5 nice-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-gray-900">Navbar</div>
+                  <div className="text-sm text-gray-600">Edit brand + links + CTA for the landing navbar.</div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Brand title</Label>
+                  <Input
+                    value={landingData.navbar?.brandTitle || ''}
+                    onChange={(e) =>
+                      setLandingData((prev) => ({
+                        ...prev,
+                        navbar: { ...(prev.navbar as any), brandTitle: e.target.value },
+                      }))
+                    }
+                  />
+                  <Label>Brand subtitle</Label>
+                  <Input
+                    value={landingData.navbar?.brandSubtitle || ''}
+                    onChange={(e) =>
+                      setLandingData((prev) => ({
+                        ...prev,
+                        navbar: { ...(prev.navbar as any), brandSubtitle: e.target.value },
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>CTA label</Label>
+                  <Input
+                    value={landingData.navbar?.ctaLabel || ''}
+                    onChange={(e) =>
+                      setLandingData((prev) => ({
+                        ...prev,
+                        navbar: { ...(prev.navbar as any), ctaLabel: e.target.value },
+                      }))
+                    }
+                  />
+                  <Label>CTA href</Label>
+                  <Input
+                    value={landingData.navbar?.ctaHref || ''}
+                    onChange={(e) =>
+                      setLandingData((prev) => ({
+                        ...prev,
+                        navbar: { ...(prev.navbar as any), ctaHref: e.target.value },
+                      }))
+                    }
+                    placeholder="/login?orgslug=defaultorg"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <div className="flex items-center justify-between">
+                  <Label>Links</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setLandingData((prev) => ({
+                        ...prev,
+                        navbar: {
+                          ...(prev.navbar as any),
+                          links: [...((prev.navbar?.links || []) as any), { label: '', href: '#inicio' }],
+                        },
+                      }))
+                    }
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add link
+                  </Button>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {(landingData.navbar?.links || []).map((l: any, idx: number) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
+                      <div className="md:col-span-3">
+                        <Input
+                          placeholder="Label"
+                          value={l.label}
+                          onChange={(e) => {
+                            const next = [...(landingData.navbar?.links || [])]
+                            next[idx] = { ...l, label: e.target.value }
+                            setLandingData((prev) => ({ ...prev, navbar: { ...(prev.navbar as any), links: next } }))
+                          }}
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <Input
+                          placeholder="#anchor"
+                          value={l.href}
+                          onChange={(e) => {
+                            const next = [...(landingData.navbar?.links || [])]
+                            next[idx] = { ...l, href: e.target.value }
+                            setLandingData((prev) => ({ ...prev, navbar: { ...(prev.navbar as any), links: next } }))
+                          }}
+                        />
+                      </div>
+                      <div className="md:col-span-1 flex justify-end">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (idx === 0) return
+                              const next = [...(landingData.navbar?.links || [])]
+                              ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                              setLandingData((prev) => ({ ...prev, navbar: { ...(prev.navbar as any), links: next } }))
+                            }}
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const links = landingData.navbar?.links || []
+                              if (idx >= links.length - 1) return
+                              const next = [...links]
+                              ;[next[idx + 1], next[idx]] = [next[idx], next[idx + 1]]
+                              setLandingData((prev) => ({ ...prev, navbar: { ...(prev.navbar as any), links: next } }))
+                            }}
+                          >
+                            ↓
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              const next = (landingData.navbar?.links || []).filter((_: any, i: number) => i !== idx)
+                              setLandingData((prev) => ({ ...prev, navbar: { ...(prev.navbar as any), links: next } }))
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Section List */}
             <div className="grid grid-cols-4 gap-6">
               {/* Sections Panel */}
@@ -409,13 +952,14 @@ const OrgEditLanding = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="w-full p-0 border-0 bg-black ">
-                      <div className="w-full">
-                        <Button variant="default" className="w-full bg-black hover:bg-black/90 text-white">
+                    {/* Keep SelectTrigger as the single button; render the inner Button as a non-button to avoid nesting */}
+                    <SelectTrigger className="w-full p-0 border-0 bg-transparent">
+                      <Button asChild variant="default" className="w-full bg-black hover:bg-black/90 text-white">
+                        <div className="w-full flex items-center justify-center">
                           <Plus className="h-4 w-4 mr-2" />
                           {t('dashboard.organization.landing.add_section')}
-                        </Button>
-                      </div>
+                        </div>
+                      </Button>
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(SECTION_TYPES).map(([type, { icon: Icon, label, description }]) => (
@@ -438,7 +982,7 @@ const OrgEditLanding = () => {
 
               {/* Editor Panel */}
               <div className="col-span-3">
-                {selectedSection !== null ? (
+                {selectedSection !== null && landingData.sections?.[selectedSection] ? (
                   <SectionEditor
                     section={landingData.sections[selectedSection]}
                     onChange={(updatedSection) => updateSection(selectedSection, updatedSection)}
@@ -464,6 +1008,26 @@ interface SectionEditorProps {
 
 const SectionEditor: React.FC<SectionEditorProps> = ({ section, onChange }) => {
   switch (section.type) {
+    case 'heroLeadMagnet':
+      return <HeroLeadMagnetEditor section={section} onChange={onChange as any} />
+    case 'about':
+      return <AboutEditor section={section} onChange={onChange as any} />
+    case 'testimonialsGrid':
+      return <TestimonialsGridEditor section={section} onChange={onChange as any} />
+    case 'howItWorks':
+      return <HowItWorksEditor section={section} onChange={onChange as any} />
+    case 'pricing':
+      return <PricingEditor section={section} onChange={onChange as any} />
+    case 'trust':
+      return <TrustEditor section={section} onChange={onChange as any} />
+    case 'community':
+      return <CommunityEditor section={section} onChange={onChange as any} />
+    case 'faq':
+      return <FaqEditor section={section} onChange={onChange as any} />
+    case 'finalCta':
+      return <FinalCtaEditor section={section} onChange={onChange as any} />
+    case 'footer':
+      return <FooterEditor section={section} onChange={onChange as any} />
     case 'hero':
       return <HeroSectionEditor section={section} onChange={onChange} />
     case 'text-and-image':
@@ -531,7 +1095,8 @@ const HeroSectionEditor: React.FC<{
               <span>{t('dashboard.organization.landing.hero_editor.tabs.background')}</span>
             </TabsTrigger>
             <TabsTrigger value="buttons" className="flex items-center space-x-2">
-              <Button className="h-4 w-4" />
+              {/* Use an icon here (not the UI Button component) to avoid nested <button> in TabsTrigger */}
+              <Link className="h-4 w-4" />
               <span>{t('dashboard.organization.landing.hero_editor.tabs.buttons')}</span>
             </TabsTrigger>
             <TabsTrigger value="illustration" className="flex items-center space-x-2">

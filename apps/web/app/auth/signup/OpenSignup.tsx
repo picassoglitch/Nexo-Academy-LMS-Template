@@ -108,7 +108,10 @@ function OpenSignUpComponent() {
             <div className="font-bold text-sm">{message}</div>
           </div>
           <hr className="border-green-900/20 800 w-40 border" />
-          <Link className="flex space-x-2 items-center" href={'/login'}>
+          <Link
+            className="flex space-x-2 items-center"
+            href={{ pathname: '/login', query: org?.slug ? { orgslug: org.slug } : undefined }}
+          >
             <User size={14} /> <div>{t('auth.login')} </div>
           </Link>
         </div>

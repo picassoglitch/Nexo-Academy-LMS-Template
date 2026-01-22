@@ -1,7 +1,7 @@
 import { getBackendUrl, getConfig } from '@services/config/config'
 
 function getMediaUrl() {
-  const mediaUrl = getConfig('NEXT_PUBLIC_LEARNHOUSE_MEDIA_URL');
+  const mediaUrl = getConfig('NEXT_PUBLIC_NEXO_MEDIA_URL');
   if (mediaUrl) {
     return mediaUrl;
   } else {
@@ -104,5 +104,10 @@ export function getOrgThumbnailMediaDirectory(orgUUID: string, fileId: string) {
 
 export function getOrgPreviewMediaDirectory(orgUUID: string, fileId: string) {
   let uri = `${getMediaUrl()}content/orgs/${orgUUID}/previews/${fileId}`
+  return uri
+}
+
+export function getOrgFaviconMediaDirectory(orgUUID: string, fileId: string) {
+  let uri = `${getMediaUrl()}content/orgs/${orgUUID}/favicons/${fileId}`
   return uri
 }

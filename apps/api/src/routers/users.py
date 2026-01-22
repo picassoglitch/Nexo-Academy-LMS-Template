@@ -208,6 +208,7 @@ async def api_update_avatar_user(
     request: Request,
     db_session: Session = Depends(get_db_session),
     current_user: PublicUser = Depends(get_current_user),
+    user_id: str,
     avatar_file: UploadFile | None = None,
 ) -> UserRead:
     """

@@ -14,6 +14,7 @@ import { Button } from '@components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@components/ui/alert';
 import { useRouter } from 'next/navigation';
 import { getUriWithoutOrg } from '@services/config/config';
+import { devSetStripeConfig, getStripeConfigStatus } from '@services/payments/payments';
 
 const PaymentsConfigurationPage: React.FC = () => {
     const org = useOrg() as any;
@@ -29,6 +30,28 @@ const PaymentsConfigurationPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isOnboarding, setIsOnboarding] = useState(false);
     const [isOnboardingLoading, setIsOnboardingLoading] = useState(false);
+    const [showKeysHelp, setShowKeysHelp] = useState(false);
+    const [stripeSecretKey, setStripeSecretKey] = useState('');
+    const [stripePublishableKey, setStripePublishableKey] = useState('');
+    const [stripeClientId, setStripeClientId] = useState('');
+    const [keysStatus, setKeysStatus] = useState<{secret?: boolean; publishable?: boolean; clientId?: boolean} | null>(null);
+    const [checkingKeys, setCheckingKeys] = useState(false);
+
+    // When Stripe OAuth finishes in a popup, it will postMessage back so we can refresh state.
+    useEffect(() => {
+        const handler = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            const data: any = event.data;
+            if (data?.type === 'stripe_connected') {
+                toast.success('Stripe connected. Refreshing status…');
+                if (org?.id && access_token) {
+                    mutate([`/payments/${org.id}/config`, access_token]);
+                }
+            }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, [org?.id, access_token]);
 
     const enableStripe = async () => {
         try {
@@ -56,7 +79,9 @@ const PaymentsConfigurationPage: React.FC = () => {
             mutate([`/payments/${org.id}/config`, access_token]);
         } catch (error) {
             console.error('Error deleting Stripe configuration:', error);
-            toast.error('Failed to delete Stripe configuration');
+            const msg = error instanceof Error ? error.message : 'Failed to delete Stripe configuration';
+            toast.error(msg);
+            throw error;
         }
     };
 
@@ -67,7 +92,13 @@ const PaymentsConfigurationPage: React.FC = () => {
             window.open(connect_url, '_blank');
         } catch (error) {
             console.error('Error getting onboarding link:', error);
-            toast.error('Failed to start Stripe onboarding');
+            const msg = error instanceof Error ? error.message : 'Failed to start Stripe onboarding'
+            // If the backend is missing Stripe keys, show an in-app setup helper instead of just failing.
+            if (msg.includes('Stripe secret key not configured') || msg.includes('Stripe client ID not configured') || msg.includes('Stripe publishable key not configured')) {
+                setShowKeysHelp(true);
+            } else {
+                toast.error(msg);
+            }
         } finally {
             setIsOnboardingLoading(false);
         }
@@ -83,6 +114,146 @@ const PaymentsConfigurationPage: React.FC = () => {
 
     return (
         <div>
+            <Modal
+                isDialogOpen={showKeysHelp}
+                onOpenChange={setShowKeysHelp}
+                minHeight="no-min"
+                dialogTitle="Stripe keys required"
+                dialogDescription="Set these environment variables for the API, then restart the API and click Connect again."
+                dialogContent={
+                    <div className="space-y-4">
+                        <div className="text-sm text-gray-600">
+                            For security, Stripe secret keys are configured on the server (API) via environment variables.
+                            Paste your keys below to generate copy/paste commands.
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700">Stripe Secret Key</label>
+                            <input
+                                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
+                                placeholder="sk_test_..."
+                                value={stripeSecretKey}
+                                onChange={(e) => setStripeSecretKey(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700">Stripe Publishable Key</label>
+                            <input
+                                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
+                                placeholder="pk_test_..."
+                                value={stripePublishableKey}
+                                onChange={(e) => setStripePublishableKey(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700">Stripe Connect Client ID</label>
+                            <input
+                                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
+                                placeholder="ca_..."
+                                value={stripeClientId}
+                                onChange={(e) => setStripeClientId(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="bg-gray-900 rounded-lg p-3 text-xs text-green-300 font-mono overflow-auto">
+                            <div>$env:LEARNHOUSE_STRIPE_SECRET_KEY=&quot;{stripeSecretKey || 'sk_test_...'}&quot;</div>
+                            <div>$env:LEARNHOUSE_STRIPE_PUBLISHABLE_KEY=&quot;{stripePublishableKey || 'pk_test_...'}&quot;</div>
+                            <div>$env:LEARNHOUSE_STRIPE_CLIENT_ID=&quot;{stripeClientId || 'ca_...'}&quot;</div>
+                        </div>
+
+                        <div className="text-xs text-gray-500">
+                            Restart the API after setting these vars: <span className="font-mono">uv run app.py</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="default"
+                                disabled={checkingKeys || !access_token}
+                                onClick={async () => {
+                                    try {
+                                        setCheckingKeys(true);
+                                        const status = await getStripeConfigStatus(access_token);
+                                        setKeysStatus({
+                                            secret: status.stripe_secret_key_configured,
+                                            publishable: status.stripe_publishable_key_configured,
+                                            clientId: status.stripe_client_id_configured,
+                                        });
+                                        if (status.stripe_secret_key_configured && status.stripe_publishable_key_configured && status.stripe_client_id_configured) {
+                                            toast.success('Stripe keys detected by API ✅ (you can click Connect again)');
+                                        } else {
+                                            toast.error('API still missing one or more Stripe keys (did you restart the API?)');
+                                        }
+                                    } catch (e) {
+                                        console.error(e);
+                                        toast.error('Failed to check Stripe keys on API');
+                                    } finally {
+                                        setCheckingKeys(false);
+                                    }
+                                }}
+                            >
+                                {checkingKeys ? 'Checking…' : 'Check API keys'}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={
+                                    checkingKeys ||
+                                    !access_token ||
+                                    !stripeSecretKey ||
+                                    !stripePublishableKey ||
+                                    !stripeClientId
+                                }
+                                onClick={async () => {
+                                    try {
+                                        setCheckingKeys(true);
+                                        await devSetStripeConfig(access_token, {
+                                            stripe_secret_key: stripeSecretKey,
+                                            stripe_publishable_key: stripePublishableKey,
+                                            stripe_client_id: stripeClientId,
+                                        });
+
+                                        const status = await getStripeConfigStatus(access_token);
+                                        setKeysStatus({
+                                            secret: status.stripe_secret_key_configured,
+                                            publishable: status.stripe_publishable_key_configured,
+                                            clientId: status.stripe_client_id_configured,
+                                        });
+
+                                        if (
+                                            status.stripe_secret_key_configured &&
+                                            status.stripe_publishable_key_configured &&
+                                            status.stripe_client_id_configured
+                                        ) {
+                                            toast.success('Saved Stripe keys to API dev config. You can click Connect again.');
+                                        } else {
+                                            toast.error('Saved, but API still reports missing keys. Check API logs.');
+                                        }
+                                    } catch (e) {
+                                        console.error(e);
+                                        const msg = e instanceof Error ? e.message : 'Failed to save keys to API dev config';
+                                        toast.error(msg);
+                                    } finally {
+                                        setCheckingKeys(false);
+                                    }
+                                }}
+                            >
+                                Save keys (dev)
+                            </Button>
+                            {keysStatus && (
+                                <div className="text-xs text-gray-600">
+                                    Secret: <span className={keysStatus.secret ? 'text-green-700 font-bold' : 'text-red-700 font-bold'}>{String(!!keysStatus.secret)}</span>{' '}
+                                    Publishable: <span className={keysStatus.publishable ? 'text-green-700 font-bold' : 'text-red-700 font-bold'}>{String(!!keysStatus.publishable)}</span>{' '}
+                                    ClientID: <span className={keysStatus.clientId ? 'text-green-700 font-bold' : 'text-red-700 font-bold'}>{String(!!keysStatus.clientId)}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                }
+            />
+
             <div className="ml-10 mr-10 mx-auto bg-white rounded-xl nice-shadow px-4 py-4">
                 <div className="flex flex-col bg-gray-50 -space-y-1 px-5 py-3 rounded-md mb-3">
                     <h1 className="font-bold text-xl text-gray-800">Payments Configuration</h1>

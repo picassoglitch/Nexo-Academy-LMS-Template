@@ -56,15 +56,17 @@ const OrgHomePage = async (params: any) => {
   const orgslug = (await params.params).orgslug
   const session = await getServerSession(nextAuthOptions)
   const access_token = session?.tokens?.access_token
+
+  const org = await getOrganizationContextInfo(orgslug, {
+    revalidate: 0,
+    tags: ['organizations'],
+  })
+
   const courses = await getOrgCourses(
     orgslug,
     { revalidate: 0, tags: ['courses'] },
     access_token ? access_token : null
   )
-  const org = await getOrganizationContextInfo(orgslug, {
-    revalidate: 0,
-    tags: ['organizations'],
-  })
   const org_id = org.id
   const collections = await getOrgCollections(
     org.id,
@@ -81,6 +83,7 @@ const OrgHomePage = async (params: any) => {
         <LandingCustom 
           landing={org.config.config.landing}
           orgslug={orgslug}
+          orgId={org_id}
         />
       ) : (
         <LandingClassic 

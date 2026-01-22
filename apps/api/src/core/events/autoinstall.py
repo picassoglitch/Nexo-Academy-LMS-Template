@@ -2,15 +2,15 @@ from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, select
 
 from cli import install
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from src.db.organizations import Organization
 
 
 def auto_install():
     # Get the database session
-    learnhouse_config = get_learnhouse_config()
+    nexo_config = get_nexo_config()
     engine = create_engine(
-        learnhouse_config.database_config.sql_connection_string, echo=False, pool_pre_ping=True  # type: ignore
+        nexo_config.database_config.sql_connection_string, echo=False, pool_pre_ping=True  # type: ignore
     )
     SQLModel.metadata.create_all(engine)
 
@@ -24,7 +24,7 @@ def auto_install():
 
     if orgs: 
         for org in orgs:
-            default_org = db_session.exec(select(Organization).where(Organization.slug == 'default')).first()
+            default_org = db_session.exec(select(Organization).where(Organization.slug == 'defaultorg')).first()
 
             if not default_org:
                 print("No default organization found. Starting auto-installation 🏗️")

@@ -1,6 +1,7 @@
 import redis
+from redis.exceptions import AuthenticationError, ConnectionError as RedisConnectionError
 from src.db.organization_config import OrganizationConfig
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from typing import Literal, TypeAlias
 from fastapi import HTTPException
 from sqlmodel import Session, select
@@ -45,22 +46,28 @@ def check_limits_with_usage(
             detail=f"{feature.capitalize()} is not enabled for this organization",
         )
 
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
-
-    if not redis_conn_string:
-        raise HTTPException(
-            status_code=500,
-            detail="Redis connection string not found",
-        )
-
-    # Connect to Redis
-    r = redis.Redis.from_url(redis_conn_string)
-
     # Check limits
     feature_limit = org_config.config["features"][feature]["limit"]
 
     if feature_limit > 0:
+        NEXO_CONFIG = get_nexo_config()
+        redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
+
+        if not redis_conn_string:
+            raise HTTPException(
+                status_code=500,
+                detail="Redis connection string not found",
+            )
+
+        # Connect to Redis (only needed when limits are enforced)
+        try:
+            r = redis.Redis.from_url(redis_conn_string)
+            r.ping()
+        except (AuthenticationError, RedisConnectionError) as e:
+            # If Redis is misconfigured/unavailable, we can't enforce usage limits.
+            # Fail open for unlimited configs, fail closed only when limits must be enforced.
+            raise HTTPException(status_code=500, detail=f"Redis unavailable for usage limits: {e}")
+
         # Get the number of feature usage
         feature_usage = r.get(f"{feature}_usage:{org_id}")
 
@@ -78,14 +85,30 @@ def check_limits_with_usage(
             )
         return True
 
+    # No limit => no need for Redis
+    return True
+
 
 def increase_feature_usage(
     feature: FeatureSet,
     org_id: int,
     db_session: Session,
 ):
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    # Only track usage when a limit exists. If limit is 0/unlimited, avoid Redis dependency.
+    statement = select(OrganizationConfig).where(OrganizationConfig.org_id == org_id)
+    org_config = db_session.exec(statement).first()
+    if not org_config:
+        return True
+    try:
+        feature_limit = org_config.config["features"][feature]["limit"]
+    except Exception:
+        # If config schema is unexpected, don't block core flows.
+        return True
+    if not feature_limit or feature_limit <= 0:
+        return True
+
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
 
     if not redis_conn_string:
         raise HTTPException(
@@ -95,6 +118,7 @@ def increase_feature_usage(
 
     # Connect to Redis
     r = redis.Redis.from_url(redis_conn_string)
+    r.ping()
 
     # Get the number of feature usage
     feature_usage = r.get(f"{feature}_usage:{org_id}")
@@ -115,8 +139,8 @@ def decrease_feature_usage(
     org_id: int,
     db_session: Session,
 ):
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
 
     if not redis_conn_string:
         raise HTTPException(

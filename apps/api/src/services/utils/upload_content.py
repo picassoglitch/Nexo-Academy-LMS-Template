@@ -3,7 +3,7 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 from fastapi import HTTPException, UploadFile
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from src.security.file_validation import validate_upload
 
 
@@ -66,13 +66,13 @@ async def upload_content(
     file_and_format: str,
     allowed_formats: Optional[list[str]] = None,
 ):
-    # Get Learnhouse Config
-    learnhouse_config = get_learnhouse_config()
+    # Get Nexo Academy Config
+    nexo_config = get_nexo_config()
 
     file_format = file_and_format.split(".")[-1].strip().lower()
 
     # Get content delivery method
-    content_delivery = learnhouse_config.hosting_config.content_delivery.type
+    content_delivery = nexo_config.hosting_config.content_delivery.type
 
     # Check if format file is allowed
     if allowed_formats:
@@ -99,7 +99,7 @@ async def upload_content(
         print("Uploading to s3...")
         s3 = boto3.client(
             "s3",
-            endpoint_url=learnhouse_config.hosting_config.content_delivery.s3api.endpoint_url,
+            endpoint_url=nexo_config.hosting_config.content_delivery.s3api.endpoint_url,
         )
 
         # Upload file to server
@@ -114,7 +114,7 @@ async def upload_content(
         try:
             s3.upload_file(
                 f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
-                "learnhouse-media",
+                "nexo-media",
                 f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
             )
         except ClientError as e:
@@ -123,7 +123,7 @@ async def upload_content(
         print("Checking if file exists in s3...")
         try:
             s3.head_object(
-                Bucket="learnhouse-media",
+                Bucket="nexo-media",
                 Key=f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
             )
             print("File upload successful!")

@@ -67,11 +67,13 @@ const CreateProductForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) =
         resetForm();
         onSuccess();
       } else {
-        toast.error('Failed to create product');
+        const detail = res?.data?.detail || res?.data?.message;
+        toast.error(detail ? String(detail) : 'Failed to create product');
       }
     } catch (error) {
       console.error('Error creating product:', error);
-      toast.error('An error occurred while creating the product');
+      const msg = error instanceof Error ? error.message : 'An error occurred while creating the product';
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

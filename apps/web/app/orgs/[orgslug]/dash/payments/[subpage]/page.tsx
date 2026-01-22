@@ -53,17 +53,7 @@ function PaymentsPage(props: { params: Promise<PaymentsParams> }) {
     }
   }
 
-  if (!isPaymentsEnabled) {
-    return (
-      <div className="h-screen w-full bg-[#f8f8f8] flex items-center justify-center p-4">
-        <div className="bg-white p-6 rounded-lg shadow-md text-center max-w-md">
-          <h2 className="text-xl font-bold mb-4">Payments Not Available</h2>
-          <p className="text-gray-600">The payments feature is not enabled for this organization.</p>
-          <p className="text-gray-600 mt-2">Please contact your administrator to enable payments.</p>
-        </div>
-      </div>
-    )
-  }
+  // Do not hard-block the UI; if the gateway isn't configured, the configuration page will guide the user.
 
   const { h1, h2 } = getPageTitle()
 

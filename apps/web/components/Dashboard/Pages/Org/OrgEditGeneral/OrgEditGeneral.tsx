@@ -4,6 +4,8 @@ import { Form, Formik } from 'formik'
 import * as Yup from 'yup'
 import {
   updateOrganization,
+  updateOrganizationConfig,
+  uploadOrganizationFavicon,
 } from '@services/settings/org'
 import { revalidateTags } from '@services/utils/ts/requests'
 import { useRouter } from 'next/navigation'
@@ -67,6 +69,9 @@ const validationSchema = Yup.object().shape({
     .max(400, 'About text must be 400 characters or less'),
   label: Yup.string().required('Organization label is required'),
   explore: Yup.boolean(),
+  tab_title: Yup.string().optional().max(80, 'Tab title must be 80 characters or less'),
+  favicon_url: Yup.string().optional().max(500, 'Favicon URL is too long'),
+  favicon_emoji: Yup.string().optional().max(8, 'Favicon emoji is too long'),
 })
 
 interface OrganizationValues {
@@ -75,6 +80,9 @@ interface OrganizationValues {
   about: string
   label: string
   explore: boolean
+  tab_title: string
+  favicon_url: string
+  favicon_emoji: string
 }
 
 const OrgEditGeneral: React.FC = () => {
@@ -83,6 +91,7 @@ const OrgEditGeneral: React.FC = () => {
   const session = useLHSession() as any
   const access_token = session?.data?.tokens?.access_token
   const org = useOrg() as any
+  const [isFaviconUploading, setIsFaviconUploading] = React.useState(false)
 
   const initialValues: OrganizationValues = {
     name: org?.name,
@@ -90,17 +99,62 @@ const OrgEditGeneral: React.FC = () => {
     about: org?.about || '',
     label: org?.label || '',
     explore: org?.explore ?? false,
+    tab_title: org?.config?.config?.general?.tab_title || '',
+    favicon_url: org?.config?.config?.general?.favicon_url || '',
+    favicon_emoji: org?.config?.config?.general?.favicon_emoji || '',
   }
 
   const updateOrg = async (values: OrganizationValues) => {
     const loadingToast = toast.loading(t('dashboard.organization.settings.updating'))
     try {
-      await updateOrganization(org.id, values, access_token)
+      // 1) Update core org fields
+      await updateOrganization(
+        org.id,
+        {
+          name: values.name,
+          description: values.description,
+          about: values.about,
+          label: values.label,
+          explore: values.explore,
+        },
+        access_token
+      )
+
+      // 2) Update org config (browser tab branding)
+      const nextConfig = JSON.parse(JSON.stringify(org?.config?.config || {}))
+      nextConfig.general = nextConfig.general || {}
+      nextConfig.general.tab_title = values.tab_title?.trim() || null
+      nextConfig.general.favicon_url = values.favicon_url?.trim() || null
+      nextConfig.general.favicon_emoji = values.favicon_emoji?.trim() || null
+      await updateOrganizationConfig(org.id, nextConfig, access_token)
+
       await revalidateTags(['organizations'], org.slug)
       mutate(`${getAPIUrl()}orgs/slug/${org.slug}`)
       toast.success(t('dashboard.organization.settings.update_success'), { id: loadingToast })
     } catch (err) {
       toast.error(t('dashboard.organization.settings.update_error'), { id: loadingToast })
+    }
+  }
+
+  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return
+    const file = event.target.files[0]
+    // allow re-uploading same file
+    event.target.value = ''
+
+    if (!access_token) return
+
+    setIsFaviconUploading(true)
+    const loadingToast = toast.loading('Uploading tab icon…')
+    try {
+      await uploadOrganizationFavicon(org.id, file, access_token)
+      await revalidateTags(['organizations'], org.slug)
+      mutate(`${getAPIUrl()}orgs/slug/${org.slug}`)
+      toast.success('Tab icon updated.', { id: loadingToast })
+    } catch (err) {
+      toast.error('Failed to upload tab icon.', { id: loadingToast })
+    } finally {
+      setIsFaviconUploading(false)
     }
   }
 
@@ -216,6 +270,89 @@ const OrgEditGeneral: React.FC = () => {
                     </div>
 
                     
+
+                    <div className="space-y-3 mt-6 bg-gray-50/50 p-4 rounded-lg nice-shadow">
+                      <div className="flex flex-col">
+                        <div className="font-semibold text-gray-800">Browser tab branding</div>
+                        <div className="text-sm text-gray-500">
+                          Controls the tab title and icon for your organization dashboard.
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="tab_title">Tab title</Label>
+                          <Input
+                            id="tab_title"
+                            name="tab_title"
+                            value={values.tab_title}
+                            onChange={handleChange}
+                            placeholder="e.g. NEXO Admin"
+                            maxLength={80}
+                          />
+                          {touched.tab_title && (errors as any).tab_title && (
+                            <p className="text-red-500 text-sm mt-1">{(errors as any).tab_title}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="favicon_emoji">Tab icon (emoji)</Label>
+                          <Input
+                            id="favicon_emoji"
+                            name="favicon_emoji"
+                            value={values.favicon_emoji}
+                            onChange={handleChange}
+                            placeholder="e.g. 🚀"
+                            maxLength={8}
+                          />
+                          {touched.favicon_emoji && (errors as any).favicon_emoji && (
+                            <p className="text-red-500 text-sm mt-1">{(errors as any).favicon_emoji}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="favicon_url">Tab icon (image URL)</Label>
+                        <Input
+                          id="favicon_url"
+                          name="favicon_url"
+                          value={values.favicon_url}
+                          onChange={handleChange}
+                          placeholder="e.g. https://yourdomain.com/favicon.png"
+                        />
+                        <div className="text-xs text-gray-500 mt-1">
+                          If set, the URL takes priority over the uploaded image and emoji.
+                        </div>
+                        {touched.favicon_url && (errors as any).favicon_url && (
+                          <p className="text-red-500 text-sm mt-1">{(errors as any).favicon_url}</p>
+                        )}
+                      </div>
+
+                      <div className="pt-2">
+                        <Label htmlFor="favicon_upload">Or upload a small icon</Label>
+                        <div className="flex items-center gap-3 mt-1">
+                          <Input
+                            id="favicon_upload"
+                            name="favicon_upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFaviconUpload}
+                            disabled={isFaviconUploading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled
+                            className="shrink-0"
+                          >
+                            {isFaviconUploading ? 'Uploading…' : 'Upload'}
+                          </Button>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Recommended: square PNG (64×64 or 128×128), under 2MB.
+                        </div>
+                      </div>
+                    </div>
 
                     <div className="flex items-center justify-between space-x-2 mt-6 bg-gray-50/50 p-4 rounded-lg nice-shadow">
                       <div className="flex items-center space-x-4">

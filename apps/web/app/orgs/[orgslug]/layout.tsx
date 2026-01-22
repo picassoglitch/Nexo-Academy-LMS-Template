@@ -6,6 +6,7 @@ import Toast from '@components/Objects/StyledElements/Toast/Toast'
 import '@styles/globals.css'
 import Onboarding from '@components/Objects/Onboarding/Onboarding';
 import Footer from "@components/Footer/Footer";
+import OrgBrowserBranding from '@components/Objects/OrgBrowserBranding'
 
 export default function RootLayout(
   props: {
@@ -25,6 +26,7 @@ export default function RootLayout(
         <NextTopLoader color="#2e2e2e" initialPosition={0.3} height={4}  easing={'ease'} speed={500} showSpinner={false} />
         <Toast />
         <Onboarding />
+        <OrgBrowserBranding />
         {children}
         <Footer />
       </OrgProvider>

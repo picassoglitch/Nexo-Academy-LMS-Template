@@ -70,7 +70,7 @@ class InternalPaymentsConfig(BaseModel):
     stripe: InternalStripeConfig
 
 
-class LearnHouseConfig(BaseModel):
+class NexoConfig(BaseModel):
     site_name: str
     site_description: str
     contact_email: str
@@ -84,7 +84,7 @@ class LearnHouseConfig(BaseModel):
     payments_config: InternalPaymentsConfig
 
 
-def get_learnhouse_config() -> LearnHouseConfig:
+def get_nexo_config() -> NexoConfig:
 
     load_dotenv()
 
@@ -92,7 +92,7 @@ def get_learnhouse_config() -> LearnHouseConfig:
     yaml_path = os.path.join(os.path.dirname(__file__), "config.yaml")
 
     # Load the YAML file
-    with open(yaml_path, "r") as f:
+    with open(yaml_path, "r", encoding="utf-8") as f:
         yaml_config = yaml.safe_load(f)
     
     # Ensure yaml_config is not None (defensive programming)
@@ -102,7 +102,7 @@ def get_learnhouse_config() -> LearnHouseConfig:
     # General Config
 
     # Development Mode
-    env_development_mode_str = os.environ.get("LEARNHOUSE_DEVELOPMENT_MODE", "None")
+    env_development_mode_str = os.environ.get("NEXO_DEVELOPMENT_MODE", "None")
     if env_development_mode_str != "None":
         env_development_mode = env_development_mode_str.lower() in ("true", "1", "yes")
     else:
@@ -114,36 +114,41 @@ def get_learnhouse_config() -> LearnHouseConfig:
     )
 
     # Logfire config
-    env_logfire_enabled = os.environ.get("LEARNHOUSE_LOGFIRE_ENABLED", "None")
+    env_logfire_enabled = os.environ.get("NEXO_LOGFIRE_ENABLED", "None")
     logfire_enabled = (
         env_logfire_enabled.lower() == "true" if env_logfire_enabled != "None"
         else yaml_config.get("general", {}).get("logfire_enabled", False)
     )
 
     # Security Config
-    env_auth_jwt_secret_key = os.environ.get("LEARNHOUSE_AUTH_JWT_SECRET_KEY")
+    # Support both NEXO_* and upstream LearnHouse LEARNHOUSE_* env var names.
+    env_auth_jwt_secret_key = os.environ.get("NEXO_AUTH_JWT_SECRET_KEY") or os.environ.get(
+        "LEARNHOUSE_AUTH_JWT_SECRET_KEY"
+    )
     auth_jwt_secret_key = env_auth_jwt_secret_key or yaml_config.get(
         "security", {}
     ).get("auth_jwt_secret_key")
 
     # Check if environment variables are defined
-    env_site_name = os.environ.get("LEARNHOUSE_SITE_NAME")
-    env_site_description = os.environ.get("LEARNHOUSE_SITE_DESCRIPTION")
-    env_contact_email = os.environ.get("LEARNHOUSE_CONTACT_EMAIL")
-    env_domain = os.environ.get("LEARNHOUSE_DOMAIN")
-    os.environ.get("LEARNHOUSE_PORT")
-    env_ssl = os.environ.get("LEARNHOUSE_SSL")
-    env_port = os.environ.get("LEARNHOUSE_PORT")
-    env_use_default_org = os.environ.get("LEARNHOUSE_USE_DEFAULT_ORG")
-    env_allowed_origins = os.environ.get("LEARNHOUSE_ALLOWED_ORIGINS")
-    env_cookie_domain = os.environ.get("LEARNHOUSE_COOKIE_DOMAIN")
+    env_site_name = os.environ.get("NEXO_SITE_NAME") or os.environ.get("LEARNHOUSE_SITE_NAME")
+    env_site_description = os.environ.get("NEXO_SITE_DESCRIPTION") or os.environ.get("LEARNHOUSE_SITE_DESCRIPTION")
+    env_contact_email = os.environ.get("NEXO_CONTACT_EMAIL") or os.environ.get("LEARNHOUSE_CONTACT_EMAIL")
+    env_domain = os.environ.get("NEXO_DOMAIN") or os.environ.get("LEARNHOUSE_DOMAIN")
+    os.environ.get("NEXO_PORT")
+    env_ssl = os.environ.get("NEXO_SSL") or os.environ.get("LEARNHOUSE_SSL")
+    env_port = os.environ.get("NEXO_PORT") or os.environ.get("LEARNHOUSE_PORT")
+    env_use_default_org = os.environ.get("NEXO_USE_DEFAULT_ORG") or os.environ.get("LEARNHOUSE_USE_DEFAULT_ORG")
+    env_allowed_origins = os.environ.get("NEXO_ALLOWED_ORIGINS") or os.environ.get("LEARNHOUSE_ALLOWED_ORIGINS")
+    env_cookie_domain = os.environ.get("NEXO_COOKIE_DOMAIN") or os.environ.get("LEARNHOUSE_COOKIE_DOMAIN")
 
     # Allowed origins should be a comma separated string
     if env_allowed_origins:
         env_allowed_origins = env_allowed_origins.split(",")
-    env_allowed_regexp = os.environ.get("LEARNHOUSE_ALLOWED_REGEXP")
-    env_self_hosted = os.environ.get("LEARNHOUSE_SELF_HOSTED")
-    env_sql_connection_string = os.environ.get("LEARNHOUSE_SQL_CONNECTION_STRING")
+    env_allowed_regexp = os.environ.get("NEXO_ALLOWED_REGEXP") or os.environ.get("LEARNHOUSE_ALLOWED_REGEXP")
+    env_self_hosted = os.environ.get("NEXO_SELF_HOSTED") or os.environ.get("LEARNHOUSE_SELF_HOSTED")
+    env_sql_connection_string = os.environ.get("NEXO_SQL_CONNECTION_STRING") or os.environ.get(
+        "LEARNHOUSE_SQL_CONNECTION_STRING"
+    )
 
     
 
@@ -173,14 +178,14 @@ def get_learnhouse_config() -> LearnHouseConfig:
     ).get("domain")
     cookie_config = CookieConfig(domain=cookies_domain)
 
-    env_content_delivery_type = os.environ.get("LEARNHOUSE_CONTENT_DELIVERY_TYPE")
+    env_content_delivery_type = os.environ.get("NEXO_CONTENT_DELIVERY_TYPE")
     content_delivery_type: str = env_content_delivery_type or (
         (yaml_config.get("hosting_config", {}).get("content_delivery", {}).get("type"))
         or "filesystem"
     )  # default to filesystem
 
-    env_bucket_name = os.environ.get("LEARNHOUSE_S3_API_BUCKET_NAME")
-    env_endpoint_url = os.environ.get("LEARNHOUSE_S3_API_ENDPOINT_URL")
+    env_bucket_name = os.environ.get("NEXO_S3_API_BUCKET_NAME")
+    env_endpoint_url = os.environ.get("NEXO_S3_API_ENDPOINT_URL")
     bucket_name = (
         yaml_config.get("hosting_config", {})
         .get("content_delivery", {})
@@ -205,8 +210,8 @@ def get_learnhouse_config() -> LearnHouseConfig:
     ).get("sql_connection_string")
 
     # AI Config
-    env_openai_api_key = os.environ.get("LEARNHOUSE_OPENAI_API_KEY")
-    env_is_ai_enabled_str = os.environ.get("LEARNHOUSE_IS_AI_ENABLED")
+    env_openai_api_key = os.environ.get("NEXO_OPENAI_API_KEY")
+    env_is_ai_enabled_str = os.environ.get("NEXO_IS_AI_ENABLED")
     
     openai_api_key = env_openai_api_key or yaml_config.get("ai_config", {}).get(
         "openai_api_key"
@@ -219,14 +224,16 @@ def get_learnhouse_config() -> LearnHouseConfig:
         is_ai_enabled = yaml_config.get("ai_config", {}).get("is_ai_enabled", False)
 
     # Redis config
-    env_redis_connection_string = os.environ.get("LEARNHOUSE_REDIS_CONNECTION_STRING")
+    env_redis_connection_string = os.environ.get("NEXO_REDIS_CONNECTION_STRING") or os.environ.get(
+        "LEARNHOUSE_REDIS_CONNECTION_STRING"
+    )
     redis_connection_string = env_redis_connection_string or yaml_config.get(
         "redis_config", {}
     ).get("redis_connection_string")
 
     # Mailing config
-    env_resend_api_key = os.environ.get("LEARNHOUSE_RESEND_API_KEY")
-    env_system_email_address = os.environ.get("LEARNHOUSE_SYSTEM_EMAIL_ADDRESS")
+    env_resend_api_key = os.environ.get("NEXO_RESEND_API_KEY")
+    env_system_email_address = os.environ.get("NEXO_SYSTEM_EMAIL_ADDRESS")
     resend_api_key = env_resend_api_key or yaml_config.get("mailing_config", {}).get(
         "resend_api_key"
     )
@@ -235,11 +242,11 @@ def get_learnhouse_config() -> LearnHouseConfig:
     ).get("system_email_address")
 
     # Payments config
-    env_stripe_secret_key = os.environ.get("LEARNHOUSE_STRIPE_SECRET_KEY")
-    env_stripe_publishable_key = os.environ.get("LEARNHOUSE_STRIPE_PUBLISHABLE_KEY")
-    env_stripe_webhook_standard_secret = os.environ.get("LEARNHOUSE_STRIPE_WEBHOOK_STANDARD_SECRET")
-    env_stripe_webhook_connect_secret = os.environ.get("LEARNHOUSE_STRIPE_WEBHOOK_CONNECT_SECRET")
-    env_stripe_client_id = os.environ.get("LEARNHOUSE_STRIPE_CLIENT_ID")
+    env_stripe_secret_key = os.environ.get("NEXO_STRIPE_SECRET_KEY") or os.environ.get("LEARNHOUSE_STRIPE_SECRET_KEY")
+    env_stripe_publishable_key = os.environ.get("NEXO_STRIPE_PUBLISHABLE_KEY") or os.environ.get("LEARNHOUSE_STRIPE_PUBLISHABLE_KEY")
+    env_stripe_webhook_standard_secret = os.environ.get("NEXO_STRIPE_WEBHOOK_STANDARD_SECRET") or os.environ.get("LEARNHOUSE_STRIPE_WEBHOOK_STANDARD_SECRET")
+    env_stripe_webhook_connect_secret = os.environ.get("NEXO_STRIPE_WEBHOOK_CONNECT_SECRET") or os.environ.get("LEARNHOUSE_STRIPE_WEBHOOK_CONNECT_SECRET")
+    env_stripe_client_id = os.environ.get("NEXO_STRIPE_CLIENT_ID") or os.environ.get("LEARNHOUSE_STRIPE_CLIENT_ID")
     
     stripe_secret_key = env_stripe_secret_key or yaml_config.get("payments_config", {}).get(
         "stripe", {}
@@ -283,8 +290,8 @@ def get_learnhouse_config() -> LearnHouseConfig:
         is_ai_enabled=bool(is_ai_enabled),
     )
 
-    # Create LearnHouseConfig object
-    config = LearnHouseConfig(
+    # Create NexoConfig object
+    config = NexoConfig(
         site_name=site_name,
         site_description=site_description,
         contact_email=contact_email,

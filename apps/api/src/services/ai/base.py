@@ -4,13 +4,13 @@ import redis
 import json
 from openai import OpenAI
 
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 
-LH_CONFIG = get_learnhouse_config()
+NEXO_CONFIG = get_nexo_config()
 
 def get_openai_client() -> OpenAI:
     """Get OpenAI client instance"""
-    api_key = getattr(LH_CONFIG.ai_config, 'openai_api_key', None)
+    api_key = getattr(NEXO_CONFIG.ai_config, 'openai_api_key', None)
     if not api_key:
         raise Exception("OpenAI API key not configured")
     return OpenAI(api_key=api_key)
@@ -73,8 +73,8 @@ def get_chat_session_history(aichat_uuid: Optional[str] = None) -> Dict[str, Any
     """Get or create a new chat session history using Redis"""
     session_id = aichat_uuid if aichat_uuid else f"aichat_{uuid4()}"
     
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
 
     message_history = []
     
@@ -104,8 +104,8 @@ def get_chat_session_history(aichat_uuid: Optional[str] = None) -> Dict[str, Any
 
 def save_message_to_history(aichat_uuid: str, user_message: str, ai_response: str):
     """Save a message exchange to Redis history"""
-    LH_CONFIG = get_learnhouse_config()
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    NEXO_CONFIG = get_nexo_config()
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
     
     if not redis_conn_string:
         return

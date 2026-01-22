@@ -40,6 +40,22 @@ function StripeConnectCallback() {
         
         setStatus('success')
         setMessage(t('payments.stripe_success'))
+
+        // Notify opener to refresh config state (so the badge updates without manual refresh)
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(
+              {
+                type: 'stripe_connected',
+                orgId: parseInt(orgId),
+                accountId: response?.account_id,
+              },
+              window.location.origin
+            )
+          }
+        } catch (e) {
+          // no-op (popup may be blocked / opener missing)
+        }
         
         // Close the window after 2 seconds of showing success
         setTimeout(() => {

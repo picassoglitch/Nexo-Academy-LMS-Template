@@ -7,11 +7,11 @@ from sqlalchemy import pool
 from sqlmodel import SQLModel
 from alembic import context
 
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 
-# LearnHouse config
+# Nexo Academy config
 
-lh_config = get_learnhouse_config()
+nexo_config = get_nexo_config()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

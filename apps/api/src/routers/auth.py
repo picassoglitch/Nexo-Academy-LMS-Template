@@ -6,9 +6,10 @@ from pydantic import BaseModel, EmailStr
 from sqlmodel import Session
 from src.db.users import AnonymousUser, UserRead
 from src.core.events.database import get_db_session
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from src.security.auth import AuthJWT, authenticate_user, get_current_user
 from src.services.auth.utils import signWithGoogle
+from src.services.dev.dev import isDevModeEnabled
 
 
 router = APIRouter()
@@ -26,12 +27,13 @@ def refresh(response: Response, Authorize: AuthJWT = Depends()):
 
     current_user = Authorize.get_jwt_subject()
     new_access_token = Authorize.create_access_token(subject=current_user)  # type: ignore
+    cookie_domain = None if isDevModeEnabled() else get_nexo_config().hosting_config.cookie_config.domain
 
     response.set_cookie(
         key="access_token_cookie",
         value=new_access_token,
         httponly=False,
-        domain=get_learnhouse_config().hosting_config.cookie_config.domain,
+        domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
     return {"access_token": new_access_token}
@@ -59,13 +61,14 @@ async def login(
     access_token = Authorize.create_access_token(subject=username)
     refresh_token = Authorize.create_refresh_token(subject=username)
     Authorize.set_refresh_cookies(refresh_token)
+    cookie_domain = None if isDevModeEnabled() else get_nexo_config().hosting_config.cookie_config.domain
 
     # set cookies using fastapi
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
         httponly=False,
-        domain=get_learnhouse_config().hosting_config.cookie_config.domain,
+        domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
 
@@ -111,13 +114,14 @@ async def third_party_login(
     access_token = Authorize.create_access_token(subject=user.email)
     refresh_token = Authorize.create_refresh_token(subject=user.email)
     Authorize.set_refresh_cookies(refresh_token)
+    cookie_domain = None if isDevModeEnabled() else get_nexo_config().hosting_config.cookie_config.domain
 
     # set cookies using fastapi
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
         httponly=False,
-        domain=get_learnhouse_config().hosting_config.cookie_config.domain,
+        domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
 

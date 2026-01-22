@@ -3,8 +3,9 @@ from typing import Literal
 from fastapi import HTTPException, Request
 from sqlmodel import Session
 import stripe
-from config.config import  get_learnhouse_config
+from config.config import  get_nexo_config
 from src.db.payments.payments import PaymentsConfigUpdate, PaymentsConfig
+from src.db.payments.payments_users import PaymentsUser
 from src.db.payments.payments_products import (
     PaymentPriceTypeEnum,
     PaymentProductTypeEnum,
@@ -17,6 +18,8 @@ from src.services.payments.payments_config import (
     update_payments_config,
 )
 from sqlmodel import select
+from datetime import datetime
+from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 from src.services.payments.payments_users import (
     create_payment_user,
@@ -39,21 +42,21 @@ async def get_stripe_connected_account_id(
 async def get_stripe_internal_credentials(
 ):
     # Get payments config from config file
-    learnhouse_config = get_learnhouse_config()
+    nexo_config = get_nexo_config()
 
-    if not learnhouse_config.payments_config.stripe.stripe_secret_key:
+    if not nexo_config.payments_config.stripe.stripe_secret_key:
         raise HTTPException(status_code=400, detail="Stripe secret key not configured")
 
-    if not learnhouse_config.payments_config.stripe.stripe_publishable_key:
+    if not nexo_config.payments_config.stripe.stripe_publishable_key:
         raise HTTPException(
             status_code=400, detail="Stripe publishable key not configured"
         )
 
     return {
-        "stripe_secret_key": learnhouse_config.payments_config.stripe.stripe_secret_key,
-        "stripe_publishable_key": learnhouse_config.payments_config.stripe.stripe_publishable_key,
-        "stripe_webhook_standard_secret": learnhouse_config.payments_config.stripe.stripe_webhook_standard_secret,
-        "stripe_webhook_connect_secret": learnhouse_config.payments_config.stripe.stripe_webhook_connect_secret,
+        "stripe_secret_key": nexo_config.payments_config.stripe.stripe_secret_key,
+        "stripe_publishable_key": nexo_config.payments_config.stripe.stripe_publishable_key,
+        "stripe_webhook_standard_secret": nexo_config.payments_config.stripe.stripe_webhook_standard_secret,
+        "stripe_webhook_connect_secret": nexo_config.payments_config.stripe.stripe_webhook_connect_secret,
     }
 
 
@@ -89,19 +92,38 @@ async def create_stripe_product(
 
     stripe_acc_id = await get_stripe_connected_account_id(request, org_id, current_user, db_session)
 
-    product = stripe.Product.create(
-        name=product_data.name,
-        description=product_data.description or "",
-        marketing_features=[
-            {"name": benefit.strip()}
-            for benefit in product_data.benefits.split(",")
-            if benefit.strip()
-        ],
-        default_price_data=default_price_data,  # type: ignore
-        stripe_account=stripe_acc_id,
-    )
+    try:
+        product = stripe.Product.create(
+            name=product_data.name,
+            description=product_data.description or "",
+            marketing_features=[
+                {"name": benefit.strip()}
+                for benefit in product_data.benefits.split(",")
+                if benefit.strip()
+            ],
+            default_price_data=default_price_data,  # type: ignore
+            stripe_account=stripe_acc_id,
+        )
+        return product
+    except stripe.StripeError as e:
+        # Surface a clean error to the client (otherwise this becomes a 500 and breaks fetch UX)
+        msg = str(e)
+        logging.error(f"Error creating Stripe product: {msg}")
 
-    return product
+        # Common misconfiguration: keys don't belong to the Stripe Connect platform that owns the connected account.
+        if "does not have access to account" in msg or "Application access may have been revoked" in msg:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Stripe keys / connected account mismatch. Your API Stripe Secret Key does not have access to the "
+                    f"connected account '{stripe_acc_id}'. This usually happens when you changed Stripe keys after "
+                    "connecting, or the Stripe Client ID/Secret Key are from a different Stripe account.\n\n"
+                    "Fix: update the API Stripe keys to the correct Connect platform account, then remove the Stripe "
+                    "connection in the UI and connect again."
+                ),
+            )
+
+        raise HTTPException(status_code=400, detail=f"Stripe error creating product: {msg}")
 
 
 async def archive_stripe_product(
@@ -205,6 +227,7 @@ async def create_checkout_session(
     current_user: PublicUser | AnonymousUser,
     db_session: Session,
 ):
+    logger = logging.getLogger("uvicorn.error")
     # Get Stripe credentials
     creds = await get_stripe_internal_credentials()
     stripe.api_key = creds.get("stripe_secret_key")
@@ -221,8 +244,29 @@ async def create_checkout_session(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    success_url = redirect_uri
-    cancel_url = redirect_uri
+    # Stripe can inject the checkout session id into the success URL.
+    # This lets us verify the payment after redirect in local dev without relying on webhooks.
+    #
+    # IMPORTANT:
+    # Stripe replaces the literal token "{CHECKOUT_SESSION_ID}" in success_url.
+    # If we URL-encode curly braces (e.g. "%7B...%7D"), Stripe will NOT replace it.
+    #
+    # Some URL builders/encoders will escape curly braces automatically, so we avoid
+    # encoding here and instead append the param directly.
+    def _append_query_param_raw(url: str, raw_param: str) -> str:
+        parsed = urlparse(url)
+        # Keep any existing query string exactly as-is, just append our param.
+        if parsed.query:
+            query = f"{parsed.query}&{raw_param}"
+        else:
+            query = raw_param
+        return urlunparse(parsed._replace(query=query))
+
+    def _add_query_params(url: str, extra: dict[str, str]) -> str:
+        parsed = urlparse(url)
+        q = dict(parse_qsl(parsed.query, keep_blank_values=True))
+        q.update(extra)
+        return urlunparse(parsed._replace(query=urlencode(q)))
 
     # Get the default price for the product
     stripe_product = stripe.Product.retrieve(product.provider_product_id, stripe_account=stripe_acc_id)
@@ -230,6 +274,7 @@ async def create_checkout_session(
 
 
     # Create or retrieve Stripe customer
+    payment_user = None
     try:
         customers = stripe.Customer.list(
             email=current_user.email, stripe_account=stripe_acc_id
@@ -271,6 +316,22 @@ async def create_checkout_session(
             status_code=400, detail=f"Error creating/retrieving customer: {str(e)}"
         )
 
+    # Build Stripe redirect URLs AFTER we have the DB payment_user id.
+    # This also provides a stable fallback identifier if Stripe doesn't inject session_id.
+    redirect_uri_with_payment_user = _append_query_param_raw(
+        redirect_uri, f"payment_user_id={payment_user.id}"
+    )
+    success_url = _append_query_param_raw(
+        redirect_uri_with_payment_user, "session_id={CHECKOUT_SESSION_ID}"
+    )
+    cancel_url = _append_query_param_raw(redirect_uri_with_payment_user, "canceled=1")
+
+    # Use uvicorn logger to ensure this shows up in dev output.
+    logger.info(f"[payments] create_checkout_session org_id={org_id} product_id={product_id}")
+    logger.info(f"[payments] redirect_uri(raw)={redirect_uri}")
+    logger.info(f"[payments] stripe success_url={success_url}")
+    logger.info(f"[payments] stripe cancel_url={cancel_url}")
+
     # Create checkout session with customer
     try:
         checkout_session_params = {
@@ -283,9 +344,12 @@ async def create_checkout_session(
             ),
             "line_items": line_items,
             "customer": customer.id,
+            "client_reference_id": str(payment_user.id),
             "metadata": {
                 "product_id": str(product.id),
                 "payment_user_id": str(payment_user.id),
+                "org_id": str(org_id),
+                "user_id": str(current_user.id),
             }
         }
 
@@ -320,6 +384,185 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+async def verify_stripe_checkout_session(
+    request: Request,
+    org_id: int,
+    session_id: str | None,
+    current_user: PublicUser | AnonymousUser,
+    db_session: Session,
+    payment_user_id: int | None = None,
+):
+    """
+    Verify a Stripe Checkout Session and mark the corresponding PaymentsUser as ACTIVE/COMPLETED.
+    This is especially important for local development where Stripe webhooks may not be configured.
+    """
+    if isinstance(current_user, AnonymousUser):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    creds = await get_stripe_internal_credentials()
+    stripe.api_key = creds.get("stripe_secret_key")
+
+    stripe_acc_id = await get_stripe_connected_account_id(request, org_id, current_user, db_session)
+
+    def _looks_like_unreplaced_token(value: str | None) -> bool:
+        if not value:
+            return True
+        v = str(value)
+        return v == "{CHECKOUT_SESSION_ID}" or "CHECKOUT_SESSION_ID" in v or (v.startswith("{") and v.endswith("}"))
+
+    try:
+        if session_id and not _looks_like_unreplaced_token(session_id):
+            checkout = stripe.checkout.Session.retrieve(
+                session_id,
+                stripe_account=stripe_acc_id,
+                expand=["subscription", "payment_intent"],
+            )
+        else:
+            # Fallback: recover the Checkout Session using the stored Stripe customer + payment_user_id.
+            if not payment_user_id:
+                raise HTTPException(status_code=400, detail="Missing checkout session id.")
+
+            statement = select(PaymentsUser).where(
+                PaymentsUser.id == payment_user_id, PaymentsUser.org_id == org_id
+            )
+            payment_user = db_session.exec(statement).first()
+            if not payment_user:
+                raise HTTPException(status_code=404, detail="Payment user not found")
+
+            # Prevent a user from claiming someone else's checkout
+            if int(payment_user.user_id) != int(current_user.id):
+                raise HTTPException(status_code=403, detail="Not allowed")
+
+            provider_data = payment_user.provider_specific_data or {}
+            stripe_customer = provider_data.get("stripe_customer") or {}
+            stripe_customer_id = stripe_customer.get("id")
+            if not stripe_customer_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Missing Stripe customer id for this payment (cannot recover session).",
+                )
+
+            sessions = stripe.checkout.Session.list(
+                customer=stripe_customer_id,
+                status="complete",
+                limit=20,
+                stripe_account=stripe_acc_id,
+            )
+
+            sessions_data = getattr(sessions, "data", None)
+            if sessions_data is None and hasattr(sessions, "get"):
+                try:
+                    sessions_data = sessions.get("data")
+                except Exception:
+                    sessions_data = None
+
+            best = None
+            best_created = None
+            for s in (sessions_data or []):
+                sid = getattr(s, "id", None) or s.get("id")
+                created = getattr(s, "created", None) if hasattr(s, "created") else s.get("created")
+                client_ref = getattr(s, "client_reference_id", None) if hasattr(s, "client_reference_id") else s.get("client_reference_id")
+                metadata = getattr(s, "metadata", None) if hasattr(s, "metadata") else s.get("metadata") or {}
+                md_payment_user_id = None
+                try:
+                    md_payment_user_id = (metadata or {}).get("payment_user_id")
+                except Exception:
+                    md_payment_user_id = None
+
+                if str(client_ref) != str(payment_user_id) and str(md_payment_user_id) != str(payment_user_id):
+                    continue
+
+                if best is None or (created is not None and (best_created is None or int(created) > int(best_created))):
+                    best = sid
+                    best_created = created
+
+            if not best:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Could not locate a completed Stripe checkout session for this payment.",
+                )
+
+            checkout = stripe.checkout.Session.retrieve(
+                best,
+                stripe_account=stripe_acc_id,
+                expand=["subscription", "payment_intent"],
+            )
+
+    except stripe.StripeError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stripe error retrieving checkout session: {str(e)}",
+        )
+
+    payment_user_id_raw = None
+    try:
+        payment_user_id_raw = (checkout.get("metadata") or {}).get("payment_user_id") or checkout.get("client_reference_id")
+    except Exception:
+        payment_user_id_raw = None
+
+    if not payment_user_id_raw:
+        raise HTTPException(status_code=400, detail="Checkout session is missing payment_user_id metadata")
+
+    try:
+        payment_user_id = int(payment_user_id_raw)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid payment_user_id in checkout session metadata")
+
+    statement = select(PaymentsUser).where(PaymentsUser.id == payment_user_id, PaymentsUser.org_id == org_id)
+    payment_user = db_session.exec(statement).first()
+    if not payment_user:
+        raise HTTPException(status_code=404, detail="Payment user not found")
+
+    # Prevent a user from claiming someone else's checkout
+    if int(payment_user.user_id) != int(current_user.id):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    payment_status = getattr(checkout, "payment_status", None) or checkout.get("payment_status")
+    mode = getattr(checkout, "mode", None) or checkout.get("mode")
+    status = getattr(checkout, "status", None) or checkout.get("status")
+
+    if payment_status == "paid" or status == "complete":
+        new_status = PaymentStatusEnum.ACTIVE if mode == "subscription" else PaymentStatusEnum.COMPLETED
+    elif payment_status in ("unpaid", "no_payment_required"):
+        new_status = PaymentStatusEnum.PENDING
+    else:
+        new_status = PaymentStatusEnum.FAILED
+
+    # Persist provider info for debugging / future reconciliation.
+    provider_data = payment_user.provider_specific_data or {}
+    provider_data.update(
+        {
+            "stripe_checkout_session_id": checkout.get("id"),
+            "stripe_payment_status": payment_status,
+            "stripe_mode": mode,
+            "stripe_subscription_id": (checkout.get("subscription") or {}).get("id")
+            if isinstance(checkout.get("subscription"), dict)
+            else checkout.get("subscription"),
+            "stripe_payment_intent_id": (checkout.get("payment_intent") or {}).get("id")
+            if isinstance(checkout.get("payment_intent"), dict)
+            else checkout.get("payment_intent"),
+            "verified_at": datetime.utcnow().isoformat(),
+        }
+    )
+
+    payment_user.status = new_status
+    payment_user.provider_specific_data = provider_data
+    payment_user.update_date = datetime.now()
+
+    db_session.add(payment_user)
+    db_session.commit()
+    db_session.refresh(payment_user)
+
+    return {
+        "success": True,
+        "payment_user_id": payment_user.id,
+        "status": payment_user.status,
+        "checkout_session_id": checkout.get("id"),
+        "payment_status": payment_status,
+        "mode": mode,
+    }
+
+
 async def generate_stripe_connect_link(
     request: Request,
     org_id: int,
@@ -330,13 +573,17 @@ async def generate_stripe_connect_link(
     """
     Generate a Stripe OAuth link for connecting a Stripe account
     """
+    # Basic validation first
+    if not redirect_uri or not (redirect_uri.startswith("http://") or redirect_uri.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid redirect_uri (must be absolute http(s) URL)")
+
     # Get credentials
     creds = await get_stripe_internal_credentials()
     stripe.api_key = creds.get("stripe_secret_key")
     
-    # Get learnhouse config for client_id
-    learnhouse_config = get_learnhouse_config()
-    client_id = learnhouse_config.payments_config.stripe.stripe_client_id
+    # Get nexo config for client_id
+    nexo_config = get_nexo_config()
+    client_id = nexo_config.payments_config.stripe.stripe_client_id
     
     if not client_id:
         raise HTTPException(status_code=400, detail="Stripe client ID not configured")
@@ -418,6 +665,12 @@ async def update_stripe_account_id(
     # Create config update with existing values but new stripe account id
     config_data = existing_config.model_dump()
     config_data["provider_specific_id"] = stripe_account_id
+    # Mark connection as active once we have a connected account id
+    config_data["active"] = True
+    # Ensure provider_config reflects completed onboarding/connection
+    provider_config = (config_data.get("provider_config") or {}) if isinstance(config_data.get("provider_config"), dict) else {}
+    provider_config["onboarding_completed"] = True
+    config_data["provider_config"] = provider_config
 
     # Update payments config
     await update_payments_config(
@@ -453,6 +706,22 @@ async def handle_stripe_oauth_callback(
         connected_account_id = response.stripe_user_id
         if not connected_account_id:
             raise HTTPException(status_code=400, detail="No account ID received from Stripe")
+
+        # Fail fast if the configured platform key cannot access the connected account.
+        # This prevents us from marking the org as "Connected" only to fail later when creating products.
+        try:
+            stripe.Account.retrieve(connected_account_id)
+        except stripe.StripeError as e:
+            msg = str(e)
+            logging.error(f"Stripe connected account access check failed: {msg}")
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Stripe keys / connected account mismatch. The API Stripe Secret Key does not have access to the "
+                    f"connected account '{connected_account_id}'. Make sure STRIPE_SECRET_KEY and STRIPE_CLIENT_ID "
+                    "come from the same Stripe account (Connect platform), then remove the connection and connect again."
+                ),
+            )
 
         # Now connected_account_id is guaranteed to be a string
         await update_stripe_account_id(

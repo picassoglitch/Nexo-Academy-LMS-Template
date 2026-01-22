@@ -4,13 +4,17 @@ import redis
 from datetime import datetime
 from typing import Any, Optional, Dict
 from sqlmodel import Session, select
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from ee.db.audit_logs import AuditLog
 from src.db.organization_config import OrganizationConfig, OrganizationConfigBase
 
 logger = logging.getLogger(__name__)
-LH_CONFIG = get_learnhouse_config()
+NEXO_CONFIG = get_nexo_config()
 REDIS_AUDIT_LOG_KEY = "learnhouse:audit_logs"
+
+# Cache Redis connectivity so we don't spam logs and waste time reconnecting.
+_redis_client_cached: Optional[redis.Redis] = None
+_redis_client_checked: bool = False
 
 def is_enterprise_plan(session: Session, org_id: int) -> bool:
     """
@@ -29,14 +33,38 @@ def is_enterprise_plan(session: Session, org_id: int) -> bool:
         return False
 
 def get_redis_client():
-    redis_conn_string = LH_CONFIG.redis_config.redis_connection_string
+    """
+    Return a usable Redis client for audit logs, or None if not configured/available.
+
+    We verify connectivity once with PING to catch invalid auth (common in dev) and
+    avoid logging the same error on every request / flush cycle.
+    """
+    global _redis_client_cached, _redis_client_checked
+
+    if _redis_client_checked:
+        return _redis_client_cached
+
+    redis_conn_string = NEXO_CONFIG.redis_config.redis_connection_string
     if not redis_conn_string:
+        _redis_client_checked = True
+        _redis_client_cached = None
         return None
+
     try:
-        return redis.Redis.from_url(redis_conn_string)
+        client = redis.Redis.from_url(redis_conn_string)
+        # Force an actual connection/auth check now (from_url is lazy).
+        client.ping()
+        _redis_client_cached = client
+        _redis_client_checked = True
+        return _redis_client_cached
+    except redis.exceptions.AuthenticationError as e:
+        logger.warning(f"Redis auth failed for audit logs; disabling EE audit logging. ({e})")
     except Exception as e:
-        logger.error(f"Failed to connect to Redis: {e}")
-        return None
+        logger.warning(f"Failed to connect to Redis for audit logs; disabling EE audit logging. ({e})")
+
+    _redis_client_cached = None
+    _redis_client_checked = True
+    return None
 
 def resolve_org_id(session: Session, data: Dict[str, Any]) -> Optional[int]:
     """

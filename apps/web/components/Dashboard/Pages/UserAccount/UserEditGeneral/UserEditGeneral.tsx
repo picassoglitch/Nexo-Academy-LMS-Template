@@ -598,7 +598,15 @@ function UserEditGeneral() {
     const file = event.target.files[0]
     setLocalAvatar(file)
     setIsLoading(true)
-    const res = await updateUserAvatar(session.data.user_uuid, file, access_token)
+    const userUuid = session?.data?.user?.user_uuid
+    const userId = session?.data?.user?.id
+    if (!userUuid || !userId) {
+      setIsLoading(false)
+      setError('Missing user session info (please refresh and try again)')
+      return
+    }
+
+    const res = await updateUserAvatar(userUuid, file, access_token)
     // wait for 1 second to show loading animation
     await new Promise((r) => setTimeout(r, 1500))
     if (res.success === false) {
@@ -607,6 +615,20 @@ function UserEditGeneral() {
       setIsLoading(false)
       setError('')
       setSuccess(t('user.settings.general.avatar_updated'))
+      // Refresh user data so the new avatar persists after navigation / reload
+      try {
+        const data = await getUser(String(userId), access_token)
+        setUserData(data)
+        // Ask NextAuth to refresh its session snapshot (sidebar/avatar uses session.user)
+        if (typeof session?.update === 'function') {
+          await session.update()
+        }
+      } catch (e) {
+        // Non-fatal: the upload worked, UI preview still shows the chosen file
+        console.error('Failed to refresh user/session after avatar update:', e)
+      }
+      // Clear local preview so we display what the server stored
+      setLocalAvatar(null)
     }
   }
 

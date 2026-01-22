@@ -1,4 +1,3 @@
-'use server';
 import { getAPIUrl } from '@services/config/config';
 import { RequestBodyWithAuthHeader, errorHandling } from '@services/utils/ts/requests';
 
@@ -54,6 +53,35 @@ export async function getStripeOnboardingLink(orgId: number, access_token: strin
   );
   const res = await errorHandling(result);
   return res;
+}
+
+export async function getStripeConfigStatus(access_token: string) {
+  const result = await fetch(
+    `${getAPIUrl()}payments/stripe/config/status`,
+    RequestBodyWithAuthHeader('GET', null, null, access_token)
+  );
+  const res = await errorHandling(result);
+  return res as {
+    stripe_secret_key_configured: boolean
+    stripe_publishable_key_configured: boolean
+    stripe_client_id_configured: boolean
+  };
+}
+
+export async function devSetStripeConfig(
+  access_token: string,
+  keys: {
+    stripe_secret_key: string;
+    stripe_publishable_key: string;
+    stripe_client_id: string;
+  }
+) {
+  const result = await fetch(
+    `${getAPIUrl()}payments/stripe/config/dev-set`,
+    RequestBodyWithAuthHeader('POST', keys, null, access_token)
+  );
+  const res = await errorHandling(result);
+  return res as { ok: boolean };
 }
 
 export async function verifyStripeConnection(orgId: number, code: string, access_token: string) {

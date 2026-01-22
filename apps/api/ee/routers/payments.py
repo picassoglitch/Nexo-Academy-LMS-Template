@@ -1,9 +1,9 @@
 from typing import Literal
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlmodel import Session
 from src.core.events.database import get_db_session
 from src.db.payments.payments import PaymentsConfig, PaymentsConfigRead
-from src.db.users import PublicUser
+from src.db.users import AnonymousUser, PublicUser
 from src.security.auth import get_current_user
 from src.services.payments.payments_config import (
     init_payments_config,
@@ -18,11 +18,23 @@ from src.services.payments.payments_courses import (
     get_courses_by_product,
 )
 from src.services.payments.payments_users import get_owned_courses
-from src.services.payments.payments_stripe import create_checkout_session, handle_stripe_oauth_callback, update_stripe_account_id
+from src.services.payments.payments_stripe import (
+    create_checkout_session,
+    handle_stripe_oauth_callback,
+    update_stripe_account_id,
+    verify_stripe_checkout_session,
+)
 from src.services.payments.payments_access import check_course_paid_access
 from src.services.payments.payments_customers import get_customers
 from src.services.payments.payments_stripe import generate_stripe_connect_link
 from src.services.payments.webhooks.payments_webhooks import handle_stripe_webhook
+from config.config import get_nexo_config
+from src.services.orgs.orgs import rbac_check
+from src.db.organizations import Organization
+
+from pydantic import BaseModel
+from pathlib import Path
+import yaml
 
 
 router = APIRouter()
@@ -187,6 +199,29 @@ async def api_create_checkout_session(
 ):
     return await create_checkout_session(request, org_id, product_id, redirect_uri, current_user, db_session)
 
+
+@router.get("/{org_id}/stripe/checkout/session/verify")
+async def api_verify_checkout_session(
+    request: Request,
+    org_id: int,
+    session_id: str | None = None,
+    payment_user_id: int | None = None,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    """
+    Verify a Stripe Checkout session after redirect and update DB access.
+    This is used by the web app return page in local dev (webhooks optional).
+    """
+    return await verify_stripe_checkout_session(
+        request,
+        org_id,
+        session_id,
+        current_user,
+        db_session,
+        payment_user_id=payment_user_id,
+    )
+
 @router.get("/{org_id}/courses/{course_id}/access")
 async def api_check_course_paid_access(
     request: Request,
@@ -201,6 +236,7 @@ async def api_check_course_paid_access(
     return {
         "has_access": await check_course_paid_access(
             course_id=course_id,
+            org_id=org_id,
             user=current_user,
             db_session=db_session
         )
@@ -253,6 +289,102 @@ async def api_generate_stripe_connect_link(
     return await generate_stripe_connect_link(
         request, org_id, redirect_uri, current_user, db_session
     )
+
+@router.get("/stripe/config/status")
+async def api_stripe_config_status(
+    current_user: PublicUser = Depends(get_current_user),
+):
+    """
+    Return whether Stripe env/config is present on the API server (never returns secrets).
+    Useful for confirming env vars were applied after an API restart.
+    """
+    cfg = get_nexo_config()
+    stripe_cfg = cfg.payments_config.stripe
+    return {
+        "stripe_secret_key_configured": bool(stripe_cfg.stripe_secret_key),
+        "stripe_publishable_key_configured": bool(stripe_cfg.stripe_publishable_key),
+        "stripe_client_id_configured": bool(stripe_cfg.stripe_client_id),
+    }
+
+
+class StripeDevConfigUpdate(BaseModel):
+    stripe_secret_key: str
+    stripe_publishable_key: str
+    stripe_client_id: str
+
+
+def _write_stripe_keys_to_config_yaml(body: StripeDevConfigUpdate) -> None:
+    # Update apps/api/config/config.yaml (the same file used by get_nexo_config())
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    raw = config_path.read_text(encoding="utf-8")
+    doc = yaml.safe_load(raw) or {}
+    doc.setdefault("payments_config", {})
+    doc["payments_config"].setdefault("stripe", {})
+    doc["payments_config"]["stripe"]["stripe_secret_key"] = body.stripe_secret_key.strip()
+    doc["payments_config"]["stripe"]["stripe_publishable_key"] = body.stripe_publishable_key.strip()
+    doc["payments_config"]["stripe"]["stripe_client_id"] = body.stripe_client_id.strip()
+
+    config_path.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
+
+
+async def _api_stripe_config_dev_set_impl(
+    request: Request,
+    body: StripeDevConfigUpdate,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    """
+    DEV-ONLY helper: write Stripe keys into config/config.yaml so local dev can proceed
+    without restarting the API / managing shell env vars.
+
+    Safety gates:
+    - development_mode must be true
+    - request must come from localhost
+    - user must be authenticated
+    """
+    if isinstance(current_user, AnonymousUser):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    cfg = get_nexo_config()
+    if not cfg.general_config.development_mode:
+        raise HTTPException(status_code=403, detail="Not allowed (development_mode is disabled)")
+
+    client_host = getattr(getattr(request, "client", None), "host", None)
+    if client_host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(status_code=403, detail="Not allowed (localhost only)")
+
+    _write_stripe_keys_to_config_yaml(body)
+
+    return {"ok": True}
+
+
+# Back-compat / simplest UX: no org id needed in dev; just save keys.
+@router.post("/stripe/config/dev-set")
+async def api_stripe_config_dev_set_legacy(
+    request: Request,
+    body: StripeDevConfigUpdate,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    return await _api_stripe_config_dev_set_impl(request, body, current_user, db_session)
+
+
+# Optional org-scoped route (kept for future strict RBAC if needed)
+@router.post("/{org_id}/stripe/config/dev-set")
+async def api_stripe_config_dev_set(
+    request: Request,
+    org_id: int,
+    body: StripeDevConfigUpdate,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    # If an org is provided, at least verify it exists and user can "update" it.
+    org = db_session.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    await rbac_check(request, org.org_uuid, current_user, "update", db_session)
+    _write_stripe_keys_to_config_yaml(body)
+    return {"ok": True}
 
 @router.get("/stripe/oauth/callback")
 async def stripe_oauth_callback(

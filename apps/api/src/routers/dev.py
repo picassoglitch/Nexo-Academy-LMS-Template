@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from migrations.orgconfigs.orgconfigs_migrations import migrate_to_v1_1, migrate_to_v1_2, migrate_v0_to_v1
 from src.core.events.database import get_db_session
 from src.db.organization_config import OrganizationConfig
@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/config")
 async def config():
-    config = get_learnhouse_config()
+    config = get_nexo_config()
     return config.dict()
 
 

@@ -116,6 +116,9 @@ function PaymentsProductPage() {
                                                 <span className='text-sm'>{product.product_type === 'subscription' ? 'Subscription' : 'One-time payment'}</span>
                                             </Badge>
                                             <h3 className="font-bold text-lg">{product.name}</h3>
+                                            <div className="text-xs font-semibold text-gray-500">
+                                                ID: <span className="font-mono">{String(product.id)}</span>
+                                            </div>
                                         </div>
                                         <div className="flex space-x-2">
                                             <button

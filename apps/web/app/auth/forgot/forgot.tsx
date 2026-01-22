@@ -1,7 +1,7 @@
 'use client'
 import Image from 'next/image'
 import React from 'react'
-import learnhouseIcon from 'public/learnhouse_bigicon_1.png'
+import nexoIcon from 'public/learnhouse_bigicon_1.png'
 import FormLayout, {
     FormField,
     FormLabelAndMessage,
@@ -77,7 +77,7 @@ function ForgotPasswordClient() {
                             quality={100}
                             width={30}
                             height={30}
-                            src={learnhouseIcon}
+                            src={nexoIcon}
                             alt=""
                         />
                     </Link>
@@ -92,7 +92,7 @@ function ForgotPasswordClient() {
                                         org?.org_uuid,
                                         org?.logo_image
                                     )}`}
-                                    alt="Learnhouse"
+                                    alt="Nexo Academy"
                                     style={{ width: 'auto', height: 70 }}
                                     className="rounded-xl shadow-xl inset-0 ring-1 ring-inset ring-black/10 bg-white"
                                 />
@@ -101,7 +101,7 @@ function ForgotPasswordClient() {
                                     quality={100}
                                     width={70}
                                     height={70}
-                                    src={learnhouseIcon}
+                                    src={nexoIcon}
                                     alt=""
                                 />
                             )}

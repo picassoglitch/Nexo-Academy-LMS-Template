@@ -1,6 +1,6 @@
 import {
-  getLEARNHOUSE_DOMAIN_VAL,
-  getLEARNHOUSE_TOP_DOMAIN_VAL,
+  getNEXO_DOMAIN_VAL,
+  getNEXO_TOP_DOMAIN_VAL,
   getDefaultOrg,
   getUriWithOrg,
   isMultiOrgModeEnabled,
@@ -31,7 +31,7 @@ export default async function proxy(req: NextRequest) {
   const default_org = getDefaultOrg()
   const { pathname, search } = req.nextUrl
   const fullhost = req.headers ? req.headers.get('host') : ''
-  const cookie_orgslug = req.cookies.get('learnhouse_current_orgslug')?.value
+  const cookie_orgslug = req.cookies.get('nexo_current_orgslug')?.value
   
 
   // Out of orgslug paths & rewrite
@@ -43,23 +43,49 @@ export default async function proxy(req: NextRequest) {
   }
 
   if (auth_paths.includes(pathname)) {
-    const response = NextResponse.rewrite(
-      new URL(`/auth${pathname}${search}`, req.url)
-    )
-
-    // Parse the search params
+    // Auth layout requires orgslug in query params. Ensure we always provide one:
+    // - prefer explicit ?orgslug=
+    // - else cookie orgslug
+    // - else derive from host (multi-org)
+    // - else default org (single-org)
     const searchParams = new URLSearchParams(search)
-    const orgslug = searchParams.get('orgslug')
+    const hadOrgslugParam = Boolean(searchParams.get('orgslug'))
+    let orgslug = searchParams.get('orgslug') || cookie_orgslug || ''
 
-    if (orgslug) {
-      const LEARNHOUSE_TOP_DOMAIN = getLEARNHOUSE_TOP_DOMAIN_VAL()
-      response.cookies.set({
-        name: 'learnhouse_current_orgslug',
-        value: orgslug,
-        domain:
-          LEARNHOUSE_TOP_DOMAIN == 'localhost' ? '' : LEARNHOUSE_TOP_DOMAIN,
-      })
+    if (!orgslug) {
+      if (hosting_mode === 'multi') {
+        const NEXO_DOMAIN = getNEXO_DOMAIN_VAL()
+        orgslug = fullhost ? fullhost.replace(`.${NEXO_DOMAIN}`, '') : (default_org as string)
+      } else {
+        orgslug = default_org as string
+      }
     }
+
+    // If user hits /login directly (no orgslug), redirect to the canonical URL with orgslug.
+    // This fixes entrypoints like course paywalls / purchase flows that navigate to /login.
+    if (!hadOrgslugParam) {
+      const redirectUrl = new URL(`${pathname}`, req.url)
+      // Preserve existing search params and inject orgslug
+      searchParams.set('orgslug', orgslug)
+      redirectUrl.search = searchParams.toString()
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    // Inject orgslug so /app/auth/layout.tsx doesn't render the "Organization not specified" error.
+    searchParams.set('orgslug', orgslug)
+    const rewriteUrl = new URL(`/auth${pathname}`, req.url)
+    rewriteUrl.search = searchParams.toString()
+    const response = NextResponse.rewrite(rewriteUrl)
+
+    // Persist orgslug for the rest of the app.
+    const NEXO_TOP_DOMAIN = getNEXO_TOP_DOMAIN_VAL()
+    response.cookies.set({
+      name: 'nexo_current_orgslug',
+      value: orgslug,
+      domain: NEXO_TOP_DOMAIN == 'localhost' ? '' : NEXO_TOP_DOMAIN,
+      path: '/',
+    })
+
     return response
   }
 
@@ -90,6 +116,30 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.rewrite(redirectUrl)
   }
 
+  // Stripe Checkout return page (post-checkout verification happens in-app).
+  // Do NOT rewrite under /orgs/*, otherwise the route won't exist (it's shared and org is provided via query/cookie).
+  if (req.nextUrl.pathname.startsWith('/payments/stripe/checkout/return')) {
+    const searchParams = req.nextUrl.searchParams
+    const orgslug = searchParams.get('orgslug') || cookie_orgslug || (default_org as string)
+    const rewriteUrl = new URL('/payments/stripe/checkout/return', req.url)
+
+    // Preserve all original search parameters
+    searchParams.forEach((value, key) => {
+      rewriteUrl.searchParams.append(key, value)
+    })
+    rewriteUrl.searchParams.set('orgslug', orgslug)
+
+    const response = NextResponse.rewrite(rewriteUrl)
+    const NEXO_TOP_DOMAIN = getNEXO_TOP_DOMAIN_VAL()
+    response.cookies.set({
+      name: 'nexo_current_orgslug',
+      value: orgslug,
+      domain: NEXO_TOP_DOMAIN == 'localhost' ? '' : NEXO_TOP_DOMAIN,
+      path: '/',
+    })
+    return response
+  }
+
   // Health Check
   if (pathname.startsWith('/health')) {
     return NextResponse.rewrite(new URL(`/api/health`, req.url))
@@ -101,10 +151,10 @@ export default async function proxy(req: NextRequest) {
       const searchParams = req.nextUrl.searchParams
       const queryString = searchParams.toString()
       const redirectPathname = '/'
-      const redirectUrl = new URL(
-        getUriWithOrg(cookie_orgslug, redirectPathname),
-        req.url
-      )
+
+      // Always redirect relative to the current request origin (keeps localhost:3000 in dev).
+      // In single-org mode, orgslug doesn't affect the hostname; it's handled by rewrites.
+      const redirectUrl = new URL(redirectPathname, req.url)
 
       if (queryString) {
         redirectUrl.search = queryString
@@ -118,10 +168,10 @@ export default async function proxy(req: NextRequest) {
   if (pathname.startsWith('/sitemap.xml')) {
     let orgslug: string;
     
-    const LEARNHOUSE_DOMAIN = getLEARNHOUSE_DOMAIN_VAL()
+    const NEXO_DOMAIN = getNEXO_DOMAIN_VAL()
     if (hosting_mode === 'multi') {
       orgslug = fullhost
-        ? fullhost.replace(`.${LEARNHOUSE_DOMAIN}`, '')
+        ? fullhost.replace(`.${NEXO_DOMAIN}`, '')
         : (default_org as string);
     } else {
       // Single hosting mode
@@ -142,10 +192,10 @@ export default async function proxy(req: NextRequest) {
   // Multi Organization Mode
   if (hosting_mode === 'multi') {
     // Get the organization slug from the URL
-    const LEARNHOUSE_DOMAIN = getLEARNHOUSE_DOMAIN_VAL()
-    const LEARNHOUSE_TOP_DOMAIN = getLEARNHOUSE_TOP_DOMAIN_VAL()
+    const NEXO_DOMAIN = getNEXO_DOMAIN_VAL()
+    const NEXO_TOP_DOMAIN = getNEXO_TOP_DOMAIN_VAL()
     const orgslug = fullhost
-      ? fullhost.replace(`.${LEARNHOUSE_DOMAIN}`, '')
+      ? fullhost.replace(`.${NEXO_DOMAIN}`, '')
       : (default_org as string)
     const response = NextResponse.rewrite(
       new URL(`/orgs/${orgslug}${pathname}`, req.url)
@@ -153,9 +203,9 @@ export default async function proxy(req: NextRequest) {
 
     // Set the cookie with the orgslug value
     response.cookies.set({
-      name: 'learnhouse_current_orgslug',
+      name: 'nexo_current_orgslug',
       value: orgslug,
-      domain: LEARNHOUSE_TOP_DOMAIN == 'localhost' ? '' : LEARNHOUSE_TOP_DOMAIN,
+      domain: NEXO_TOP_DOMAIN == 'localhost' ? '' : NEXO_TOP_DOMAIN,
       path: '/',
     })
 
@@ -165,7 +215,7 @@ export default async function proxy(req: NextRequest) {
   // Single Organization Mode
   if (hosting_mode === 'single') {
     // Get the default organization slug
-    const LEARNHOUSE_TOP_DOMAIN = getLEARNHOUSE_TOP_DOMAIN_VAL()
+    const NEXO_TOP_DOMAIN = getNEXO_TOP_DOMAIN_VAL()
     const orgslug = default_org as string
     const response = NextResponse.rewrite(
       new URL(`/orgs/${orgslug}${pathname}`, req.url)
@@ -173,9 +223,9 @@ export default async function proxy(req: NextRequest) {
 
     // Set the cookie with the orgslug value
     response.cookies.set({
-      name: 'learnhouse_current_orgslug',
+      name: 'nexo_current_orgslug',
       value: orgslug,
-      domain: LEARNHOUSE_TOP_DOMAIN == 'localhost' ? '' : LEARNHOUSE_TOP_DOMAIN,
+      domain: NEXO_TOP_DOMAIN == 'localhost' ? '' : NEXO_TOP_DOMAIN,
       path: '/',
     })
 

@@ -40,7 +40,16 @@ function CoursePaidOptions({ course }: CoursePaidOptionsProps) {
 
     try {
       setIsProcessing(prev => ({ ...prev, [productId]: true }))
-      const redirect_uri = getUriWithOrg(org.slug, '/courses')
+      const returnTo =
+        typeof window !== 'undefined'
+          ? `${window.location.pathname}${window.location.search}`
+          : '/courses'
+      const redirect_uri = getUriWithOrg(
+        org.slug,
+        `/payments/stripe/checkout/return?org_id=${encodeURIComponent(
+          String(course.org_id)
+        )}&orgslug=${encodeURIComponent(org.slug)}&return_to=${encodeURIComponent(returnTo)}`
+      )
       const response = await getStripeProductCheckoutSession(
         course.org_id,
         productId,
@@ -49,7 +58,8 @@ function CoursePaidOptions({ course }: CoursePaidOptionsProps) {
       )
 
       if (response.success) {
-        router.push(response.data.checkout_url)
+        // Stripe Checkout is an external URL; use a full navigation.
+        window.location.href = response.data.checkout_url
       } else {
         toast.error(t('payments.failed_checkout'))
       }

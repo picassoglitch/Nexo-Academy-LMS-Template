@@ -42,23 +42,27 @@ async def check_activity_paid_access(
     if is_course_author:
         return True
 
-    # Check if course is linked to a product
-    statement = select(PaymentsCourse).where(PaymentsCourse.course_id == course.id)
-    course_payment = db_session.exec(statement).first()
+    # Check if course is linked to one or more products (within the same org).
+    statement = select(PaymentsCourse).where(
+        PaymentsCourse.course_id == course.id,
+        PaymentsCourse.org_id == course.org_id,
+    )
+    course_payments = db_session.exec(statement).all()
 
     # If course is not linked to any product, it's free
-    if not course_payment:
+    if not course_payments:
         return True
     
     # Anonymous users have no access to paid activities
     if isinstance(user, AnonymousUser):
         return False
     
-    # Check if user has a valid subscription or payment
+    # Check if user has a valid subscription or payment for ANY linked product.
+    product_ids = [pc.payment_product_id for pc in course_payments]
     statement = select(PaymentsUser).where(
         PaymentsUser.user_id == user.id,
-        PaymentsUser.payment_product_id == course_payment.payment_product_id,
-        PaymentsUser.status.in_( # type: ignore
+        PaymentsUser.payment_product_id.in_(product_ids),  # type: ignore
+        PaymentsUser.status.in_(  # type: ignore
             [PaymentStatusEnum.ACTIVE, PaymentStatusEnum.COMPLETED]
         ),
     )
@@ -68,6 +72,7 @@ async def check_activity_paid_access(
 
 async def check_course_paid_access(
     course_id: int,
+    org_id: int,
     user: PublicUser | AnonymousUser,
     db_session: Session,
 ) -> bool:
@@ -85,19 +90,27 @@ async def check_course_paid_access(
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
 
-    # Check if course is linked to a product
-    statement = select(PaymentsCourse).where(PaymentsCourse.course_id == course.id)
-    course_payment = db_session.exec(statement).first()
+    # Check if course is linked to one or more products (within the provided org).
+    statement = select(PaymentsCourse).where(
+        PaymentsCourse.course_id == course.id,
+        PaymentsCourse.org_id == org_id,
+    )
+    course_payments = db_session.exec(statement).all()
 
     # If course is not linked to any product, it's free
-    if not course_payment:
+    if not course_payments:
         return True
 
+    # Anonymous users have no access to paid courses
+    if isinstance(user, AnonymousUser):
+        return False
+
     # Check if user has a valid subscription
+    product_ids = [pc.payment_product_id for pc in course_payments]
     statement = select(PaymentsUser).where(
         PaymentsUser.user_id == user.id,
-        PaymentsUser.payment_product_id == course_payment.payment_product_id,
-        PaymentsUser.status.in_( # type: ignore
+        PaymentsUser.payment_product_id.in_(product_ids),  # type: ignore
+        PaymentsUser.status.in_(  # type: ignore
             [PaymentStatusEnum.ACTIVE, PaymentStatusEnum.COMPLETED]
         ),
     )

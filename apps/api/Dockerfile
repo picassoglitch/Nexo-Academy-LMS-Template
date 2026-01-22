@@ -9,8 +9,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.9.7 /uv /uvx /bin/
 ADD . /app
 
 # Remove Enterprise Edition folder for public builds
-ARG LEARNHOUSE_PUBLIC=false
-RUN if [ "$LEARNHOUSE_PUBLIC" = "true" ]; then rm -rf /app/ee; fi
+ARG NEXO_PUBLIC=false
+RUN if [ "$NEXO_PUBLIC" = "true" ]; then rm -rf /app/ee; fi
 
 # Sync the project into a new environment, using the frozen lockfile
 WORKDIR /app

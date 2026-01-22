@@ -35,7 +35,9 @@ from src.services.orgs.orgs import (
     get_organization_by_slug,
     get_orgs_by_user,
     get_orgs_by_user_admin,
+    update_org_config,
     update_org,
+    update_org_favicon,
     update_org_logo,
     update_org_preview,
     update_org_signup_mechanism,
@@ -401,6 +403,46 @@ async def api_update_org(
     Update Org by ID
     """
     return await update_org(request, org_object, org_id, current_user, db_session)
+
+
+@router.put("/{org_id}/config")
+async def api_update_org_config(
+    request: Request,
+    org_id: int,
+    config_object: OrganizationConfigBase,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    """
+    Update organization config (admin only).
+    """
+    return await update_org_config(
+        request=request,
+        orgconfig=config_object,
+        org_id=org_id,
+        current_user=current_user,
+        db_session=db_session,
+    )
+
+
+@router.put("/{org_id}/favicon")
+async def api_update_org_favicon(
+    request: Request,
+    org_id: int,
+    favicon_file: UploadFile,
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: Session = Depends(get_db_session),
+):
+    """
+    Upload and set organization favicon (stored in org config).
+    """
+    return await update_org_favicon(
+        request=request,
+        favicon_file=favicon_file,
+        org_id=str(org_id),
+        current_user=current_user,
+        db_session=db_session,
+    )
 
 
 @router.delete("/{org_id}")

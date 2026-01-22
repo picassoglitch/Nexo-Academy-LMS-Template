@@ -4,7 +4,7 @@ from fastapi import FastAPI, APIRouter, Depends
 from sqlmodel import Session
 from src.core.events.database import engine
 from ee.middleware.audit import EEAuditLogMiddleware
-from ee.services.audit import flush_audit_logs_to_db
+from ee.services.audit import flush_audit_logs_to_db, get_redis_client
 from ee.routers import cloud_internal
 from ee.routers import payments
 from ee.routers import info
@@ -54,6 +54,10 @@ def on_startup(app: FastAPI):
     """Run Enterprise Edition startup tasks."""
     
     # Start Audit Log Flusher
+    if not get_redis_client():
+        logger.info("EE Audit log flusher disabled (Redis not configured/available).")
+        return
+
     async def audit_log_flusher():
         while True:
             await asyncio.sleep(60)  # Flush every minute

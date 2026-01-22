@@ -2,7 +2,7 @@ from sqlmodel import Session
 from src.core.events.database import get_db_session
 from src.db.users import AnonymousUser, PublicUser, User, UserRead
 from src.services.users.users import security_get_user
-from config.config import get_learnhouse_config
+from config.config import get_nexo_config
 from pydantic import BaseModel
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -12,6 +12,7 @@ from src.services.dev.dev import isDevModeEnabled
 from src.services.users.users import security_verify_password
 from src.security.security import ALGORITHM, SECRET_KEY
 from fastapi_jwt_auth import AuthJWT
+from typing import Optional
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -25,8 +26,12 @@ class Settings(BaseModel):
         False if isDevModeEnabled() else timedelta(hours=8).total_seconds()
     )
     authjwt_cookie_samesite = "lax"
-    authjwt_cookie_secure = True
-    authjwt_cookie_domain = get_learnhouse_config().hosting_config.cookie_config.domain
+    # In local dev we typically run over http://localhost, so secure cookies would never be set/sent.
+    authjwt_cookie_secure = False if isDevModeEnabled() else True
+    # Browsers generally ignore/deny Domain=localhost; host-only cookies are what we want in dev.
+    authjwt_cookie_domain: Optional[str] = (
+        None if isDevModeEnabled() else get_nexo_config().hosting_config.cookie_config.domain
+    )
 
 
 @AuthJWT.load_config  # type: ignore

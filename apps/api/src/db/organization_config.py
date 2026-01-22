@@ -81,6 +81,11 @@ class OrgGeneralConfig(BaseModel):
     enabled: bool = True
     color: str = "normal"
     watermark: bool = True
+    # Browser branding (org-level)
+    tab_title: Optional[str] = None
+    favicon_url: Optional[str] = None
+    favicon_emoji: Optional[str] = None
+    favicon_image: Optional[str] = None
 
 
 # Cloud

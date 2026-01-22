@@ -4,7 +4,7 @@ import {
   loginAndGetToken,
   loginWithOAuthToken,
 } from '@services/auth/auth'
-import { getLEARNHOUSE_TOP_DOMAIN_VAL, getUriWithOrg } from '@services/config/config'
+import { getNEXO_TOP_DOMAIN_VAL, getUriWithOrg } from '@services/config/config'
 import { getResponseMetadata } from '@services/utils/ts/requests'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
@@ -19,10 +19,12 @@ declare global {
   };
 }
 
-export const isDevEnv = getLEARNHOUSE_TOP_DOMAIN_VAL() == 'localhost' ? true : false
+export const isDevEnv = getNEXO_TOP_DOMAIN_VAL() == 'localhost' ? true : false
 
 export const nextAuthOptions = {
   debug: isDevEnv,
+  // NextAuth will also read NEXTAUTH_SECRET automatically, but setting it explicitly makes behavior obvious.
+  secret: process.env.NEXTAUTH_SECRET || process.env.NEXO_NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       // The name to display on the sign in form (e.g. 'Sign in with...')
@@ -51,14 +53,16 @@ export const nextAuthOptions = {
       },
     }),
     GoogleProvider({
-      clientId: process.env.LEARNHOUSE_GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.LEARNHOUSE_GOOGLE_CLIENT_SECRET || '',
+      clientId: process.env.NEXO_GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.NEXO_GOOGLE_CLIENT_SECRET || '',
     }),
   ],
   pages: {
-    signIn: getUriWithOrg('auth', '/'),
-    verifyRequest: getUriWithOrg('auth', '/'),
-    error: getUriWithOrg('auth', '/'), // Error code passed in query string as ?error=
+    // Use relative paths so we always stay on the same origin (including dev port).
+    // The middleware (`proxy.ts`) rewrites these to the correct internal routes.
+    signIn: '/login',
+    verifyRequest: '/login',
+    error: '/login', // Error code passed in query string as ?error=
   },
   cookies: {
     sessionToken: {
@@ -68,7 +72,7 @@ export const nextAuthOptions = {
         sameSite: 'lax',
         path: '/',
         // When working on localhost, the cookie domain must be omitted entirely (https://stackoverflow.com/a/1188145)
-        domain: `.${getLEARNHOUSE_TOP_DOMAIN_VAL()}`,
+        domain: isDevEnv ? undefined : `.${getNEXO_TOP_DOMAIN_VAL()}`,
         secure: !isDevEnv,
       },
     },
@@ -118,7 +122,8 @@ export const nextAuthOptions = {
     async session({ session, token }: any) {
       // Include user information in the session
       if (token.user) {
-        // Cache the session for 1 minute to refresh every minute
+        // Cache the session briefly (dev should refresh quickly so profile changes show immediately)
+        const cacheTtlMs = isDevEnv ? 5 * 1000 : 60 * 1000
         const cacheKey = `user_session_${token.user.tokens.access_token}`;
         
         // Initialize cache if it doesn't exist
@@ -136,7 +141,7 @@ export const nextAuthOptions = {
         let cachedSession = global.sessionCache[cacheKey];
         const now = Date.now();
         
-        if (cachedSession && now - cachedSession.timestamp < 1 * 60 * 1000) {
+        if (cachedSession && now - cachedSession.timestamp < cacheTtlMs) {
           return cachedSession.data;
         }
 

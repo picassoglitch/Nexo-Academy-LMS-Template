@@ -91,7 +91,7 @@ export const swrFetcher = async (url: string, token?: string) => {
   try {
     // Fetch the data
     const request = await fetch(url, options)
-    let res = errorHandling(request)
+    let res = await errorHandling(request)
 
     // Return the data
     return res
@@ -100,10 +100,28 @@ export const swrFetcher = async (url: string, token?: string) => {
   }
 }
 
-export const errorHandling = (res: any) => {
+export const errorHandling = async (res: any) => {
   if (!res.ok) {
-    const error: any = new Error(`${res.statusText}`)
+    let detail = ''
+    try {
+      const ct = (res.headers?.get?.('content-type') || '') as string
+      if (ct.includes('application/json')) {
+        const json = await res.json()
+        detail =
+          (json && (json.detail || json.message)) ? String(json.detail || json.message) : JSON.stringify(json)
+      } else {
+        detail = await res.text()
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    const message = detail
+      ? `${res.status} ${res.statusText}: ${detail}`
+      : `${res.status} ${res.statusText}`
+    const error: any = new Error(message)
     error.status = res.status
+    error.detail = detail
     throw error
   }
   return res.json()

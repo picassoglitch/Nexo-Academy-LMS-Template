@@ -466,13 +466,13 @@ const UserProfileBuilder = () => {
                   }
                 }}
               >
-                <SelectTrigger className="w-full p-0 border-0 bg-black">
-                  <div className="w-full">
-                    <Button variant="default" className="w-full bg-black hover:bg-black/90 text-white">
+                <SelectTrigger className="w-full p-0 border-0 bg-transparent">
+                  <Button asChild variant="default" className="w-full bg-black hover:bg-black/90 text-white">
+                    <div className="w-full flex items-center justify-center">
                       <Plus className="h-4 w-4 mr-2" />
                       {t('user.settings.profile_builder.add_section')}
-                    </Button>
-                  </div>
+                    </div>
+                  </Button>
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(SECTION_TYPES).map(([type, { icon: Icon, labelKey, descriptionKey }]) => (
