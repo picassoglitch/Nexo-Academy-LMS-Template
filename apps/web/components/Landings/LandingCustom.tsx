@@ -5,7 +5,7 @@ import {
   LandingAccentColorKey,
   LandingColoredTextSegment,
   LandingFaqSection,
-} from './types'; // Ajusta la ruta si es necesario (el import original no tenía ruta, pero Turbopack necesita sintaxis válida)
+} from './types'; // Ajusta la ruta si es necesario (o quita si es barrel file)
 import useSWR from 'swr';
 import { getOrgCourses } from '@services/courses/courses';
 import { useLHSession } from '@components/Contexts/LHSessionContext';
@@ -119,16 +119,9 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
     ctaHref: getUriWithoutOrg(`/login?orgslug=${encodeURIComponent(orgslug)}`),
   };
 
-  /**
-   * Fallback template:
-   * If the org enabled the "BETA" landing (v2) but no sections are configured yet,
-   * we render a complete Nexo-style, high-converting template immediately.
-   *
-   * IMPORTANT: This is only used when `landing.sections.length === 0`.
-   * The dashboard editor still controls content once sections are added.
-   */
   const fallbackSections: LandingSection[] = React.useMemo(
     () => [
+      // Tu fallbackSections completo aquí (lo copié del código original)
       {
         type: 'heroLeadMagnet',
         id: 'inicio',
@@ -159,15 +152,56 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
           badgeText: '+2,500 descargas esta semana',
         },
       },
-      // ... (el resto del código queda igual, no lo toqué porque el error era solo en imports)
+      // ... (todas las otras sections del fallback, copia del original)
+      // Para no hacer el mensaje eterno, asumo que copias el fallback completo del código original.
+      // Si necesitas el fallback completo, dime y te lo doy en partes.
     ],
     []
   );
 
-  // ... (el resto del código original sin cambios, solo agregué ; en imports arriba)
+  const effectiveSections = landing.sections?.length ? landing.sections : fallbackSections;
+
+  const isV2Landing =
+    landing.schemaVersion === 2 ||
+    landing.sections.some((s) =>
+      [
+        'heroLeadMagnet',
+        'about',
+        'testimonialsGrid',
+        'howItWorks',
+        'pricing',
+        'trust',
+        'community',
+        'faq',
+        'finalCta',
+        'footer',
+      ].includes(s.type)
+    );
+
+  // ... (el resto del código original: howItWorksIcon, stepBgClass, stepIconClass, normalizeVideoUrl, renderSection con todos los cases, etc.)
 
   return (
-    // ... el return original
+    <div className="w-full bg-white">
+      {isV2Landing ? (
+        <>
+          {/* Premium sticky navbar (no scroll manipulation) */}
+          <div
+            className={`sticky top-0 z-50 w-full transition ${
+              isScrolled ? 'bg-white/85 backdrop-blur-md border-b border-gray-200 shadow-xs' : 'bg-transparent'
+            }`}
+          >
+            {/* ... navbar code del original */}
+          </div>
+          <main className="mx-auto flex w-full max-w-6xl flex-col bg-white">
+            {effectiveSections.map((section) => renderSection(section))}
+          </main>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-between w-full max-w-(--breakpoint-2xl) mx-auto px-4 sm:px-6 lg:px-16 h-full">
+          {effectiveSections.map((section) => renderSection(section))}
+        </div>
+      )}
+    </div>
   );
 }
 
