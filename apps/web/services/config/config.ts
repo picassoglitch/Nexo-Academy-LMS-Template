@@ -15,6 +15,12 @@ function env(...keys: string[]): string | undefined {
   return undefined
 }
 
+// Public helper (kept for backward-compat with existing imports like media.ts).
+// IMPORTANT: Do not silently default to localhost for API URLs in production.
+export const getConfig = (key: string, defaultValue: string = ''): string => {
+  return env(key) || defaultValue
+}
+
 function ensureTrailingSlash(url: string) {
   return url.endsWith('/') ? url : `${url}/`
 }
