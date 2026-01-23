@@ -455,6 +455,62 @@ async def get_user_session(
 
     user = UserRead.model_validate(user)
 
+    # ------------------------------------------------------------
+    # Bootstrap admin (Render free plan has no shell).
+    # If NEXO_BOOTSTRAP_ADMIN_EMAIL matches the logged-in user's email,
+    # promote them to admin (role_id=1) in the target org.
+    #
+    # IMPORTANT: Remove this env var after bootstrapping.
+    # ------------------------------------------------------------
+    try:
+        import os
+        import logging
+
+        bootstrap_email = (
+            os.getenv("NEXO_BOOTSTRAP_ADMIN_EMAIL")
+            or os.getenv("BOOTSTRAP_ADMIN_EMAIL")
+        )
+        bootstrap_org_slug = (
+            os.getenv("NEXO_BOOTSTRAP_ADMIN_ORG_SLUG")
+            or os.getenv("BOOTSTRAP_ADMIN_ORG_SLUG")
+            or "defaultorg"
+        )
+
+        if bootstrap_email and (user.email or "").lower() == bootstrap_email.lower():
+            org = db_session.exec(
+                select(Organization).where(Organization.slug == bootstrap_org_slug)
+            ).first()
+            if not org or org.id is None:
+                logging.warning(
+                    f"Bootstrap admin: org '{bootstrap_org_slug}' not found; cannot promote."
+                )
+            else:
+                uo = db_session.exec(
+                    select(UserOrganization).where(
+                        UserOrganization.user_id == user.id,
+                        UserOrganization.org_id == org.id,
+                    )
+                ).first()
+                if uo:
+                    if int(uo.role_id) != 1:
+                        uo.role_id = 1
+                        uo.update_date = str(datetime.now())
+                        db_session.add(uo)
+                        db_session.commit()
+                else:
+                    uo = UserOrganization(
+                        user_id=int(user.id),
+                        org_id=int(org.id),
+                        role_id=1,
+                        creation_date=str(datetime.now()),
+                        update_date=str(datetime.now()),
+                    )
+                    db_session.add(uo)
+                    db_session.commit()
+    except Exception:
+        # Never block session retrieval if bootstrap logic fails.
+        pass
+
     # Get roles and orgs
     statement = (
         select(UserOrganization)
