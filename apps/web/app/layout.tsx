@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { SessionProvider } from 'next-auth/react'
 import LHSessionProvider from '@components/Contexts/LHSessionContext'
 import { isDevEnv } from './auth/options'
-import Script from 'next/script'
 import '../lib/i18n'
 import I18nProvider from '@components/Contexts/I18nContext'
 
@@ -24,9 +23,12 @@ export default function RootLayout({
     <html className="" lang="en">
       <head />
       <body>
-        {/* Inject runtime configuration for client-side access */}
-        <Script src="/runtime-config.js" strategy="beforeInteractive" />
-        {isDevEnv ? '' : <Script data-website-id="a1af6d7a-9286-4a1f-8385-ddad2a29fcbb" src="/umami/script.js" />}
+        {isDevEnv ? '' : (
+          <script
+            data-website-id="a1af6d7a-9286-4a1f-8385-ddad2a29fcbb"
+            src="/umami/script.js"
+          />
+        )}
         <SessionProvider key="session-provider" refetchInterval={60000}>
           <LHSessionProvider>
             <I18nProvider>

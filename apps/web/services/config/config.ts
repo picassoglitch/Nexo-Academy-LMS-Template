@@ -1,72 +1,77 @@
-// Runtime configuration cache
-let runtimeConfig: Record<string, string> | null = null;
+/**
+ * Production config on Render must come from NEXT_PUBLIC_* env vars baked at build time.
+ * We intentionally do NOT depend on runtime-config.js (it caused 404s and localhost fallbacks).
+ */
 
-// Lazy load runtime configuration
-function loadRuntimeConfig(): Record<string, string> {
-  if (runtimeConfig !== null) {
-    return runtimeConfig;
+let _didLog = false
+
+const isProd = process.env.NODE_ENV === 'production'
+
+function env(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const v = process.env[key]
+    if (v && String(v).trim() !== '') return String(v)
   }
-
-  runtimeConfig = {};
-
-  if (typeof window !== 'undefined') {
-    // Client-side: read from window.__RUNTIME_CONFIG__ if available
-    if ((window as any).__RUNTIME_CONFIG__) {
-      runtimeConfig = (window as any).__RUNTIME_CONFIG__;
-    }
-  } else {
-    // Server-side: try to read from runtime-config.json
-    // Try multiple possible paths for standalone mode
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      
-      // In standalone mode, runtime-config.json is in the same directory as server.js
-      // Try common possible locations relative to the current working directory and module
-      const possiblePaths = [
-        path.join(process.cwd(), 'runtime-config.json'),
-        path.join(__dirname || process.cwd(), 'runtime-config.json'),
-        path.join(__dirname || process.cwd(), '..', 'runtime-config.json'),
-      ];
-      
-      for (const configPath of possiblePaths) {
-        try {
-          if (fs.existsSync(configPath)) {
-            runtimeConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            break;
-          }
-        } catch {
-          // Continue to next path
-        }
-      }
-    } catch {
-      // fs/path not available (client-side bundle), skip
-    }
-  }
-
-  return runtimeConfig || {};
+  return undefined
 }
 
-// Helper function to get config value with fallback
-export const getConfig = (key: string, defaultValue: string = ''): string => {
-  const config = loadRuntimeConfig();
-  
-  // 1. Check runtime config (from runtime-config.json or the generated runtime-config.js)
-  if (config && config[key]) {
-    return config[key];
+function ensureTrailingSlash(url: string) {
+  return url.endsWith('/') ? url : `${url}/`
+}
+
+function ensureApiV1(url: string) {
+  const trimmed = url.trim()
+  // If caller gives full /api/v1 already, keep it.
+  if (trimmed.includes('/api/v1')) {
+    return ensureTrailingSlash(trimmed)
   }
+  return ensureTrailingSlash(`${trimmed.replace(/\/+$/, '')}/api/v1`)
+}
 
-  // 2. Fallback to process.env (Server-side only)
-  return process.env[key] || defaultValue;
-};
+function resolveApiUrl() {
+  // Support both the repo's old env vars and the user's Render env vars.
+  const explicit = env('NEXT_PUBLIC_NEXO_API_URL', 'NEXT_PUBLIC_API_URL')
+  if (explicit) return ensureApiV1(explicit)
 
-// Dynamic config getters - these are functions to ensure runtime values are used
+  // Never default to localhost in production.
+  if (isProd) return 'https://api.nexo-ai.world/api/v1/'
+
+  // Local dev fallback only.
+  return 'http://localhost/api/v1/'
+}
+
+function resolveBackendUrl() {
+  const explicit = env('NEXT_PUBLIC_NEXO_BACKEND_URL', 'NEXT_PUBLIC_BACKEND_URL')
+  if (explicit) return ensureTrailingSlash(explicit)
+
+  const api = env('NEXT_PUBLIC_NEXO_API_URL', 'NEXT_PUBLIC_API_URL')
+  if (api) return ensureTrailingSlash(api.replace(/\/api\/v1\/?$/, ''))
+
+  if (isProd) return 'https://api.nexo-ai.world/'
+  return 'http://localhost/'
+}
+
+function maybeDebugLog() {
+  const debug = (!isProd) || env('NEXT_PUBLIC_DEBUG', 'DEBUG') === 'true'
+  if (!debug || _didLog) return
+  _didLog = true
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log('[config] API_URL =', resolveApiUrl())
+  }
+}
+
+// Dynamic config getters
 const getNEXO_HTTP_PROTOCOL = () =>
-  (getConfig('NEXT_PUBLIC_NEXO_HTTPS') === 'true') ? 'https://' : 'http://'
-const getNEXO_API_URL = () => getConfig('NEXT_PUBLIC_NEXO_API_URL', 'http://localhost/api/v1/')
-const getNEXO_BACKEND_URL = () => getConfig('NEXT_PUBLIC_NEXO_BACKEND_URL', 'http://localhost/')
-const getNEXO_DOMAIN = () => getConfig('NEXT_PUBLIC_NEXO_DOMAIN', 'localhost')
-const getNEXO_TOP_DOMAIN = () => getConfig('NEXT_PUBLIC_NEXO_TOP_DOMAIN', 'localhost')
+  (env('NEXT_PUBLIC_NEXO_HTTPS', 'NEXT_PUBLIC_HTTPS') === 'true') ? 'https://' : 'http://'
+const getNEXO_API_URL = () => {
+  const v = resolveApiUrl()
+  maybeDebugLog()
+  return v
+}
+const getNEXO_BACKEND_URL = () => resolveBackendUrl()
+const getNEXO_DOMAIN = () => env('NEXT_PUBLIC_NEXO_DOMAIN', 'NEXT_PUBLIC_DOMAIN') || (isProd ? 'nexo-ai.world' : 'localhost')
+const getNEXO_TOP_DOMAIN = () => env('NEXT_PUBLIC_NEXO_TOP_DOMAIN', 'NEXT_PUBLIC_TOP_DOMAIN') || (isProd ? 'nexo-ai.world' : 'localhost')
 
 // Export getter functions for dynamic runtime configuration
 export const getNEXO_HTTP_PROTOCOL_VAL = getNEXO_HTTP_PROTOCOL
