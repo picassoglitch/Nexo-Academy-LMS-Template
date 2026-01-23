@@ -5,7 +5,7 @@ import {
   LandingAccentColorKey,
   LandingColoredTextSegment,
   LandingFaqSection,
-} from './types'; // Ajusta la ruta si es necesario (o quita si es barrel file)
+} from '@/types/landing'; // Cambia a la ruta correcta si existe un barrel o file de types (común en Next.js apps)
 import useSWR from 'swr';
 import { getOrgCourses } from '@services/courses/courses';
 import { useLHSession } from '@components/Contexts/LHSessionContext';
@@ -62,7 +62,6 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
   );
 
   React.useEffect(() => {
-    // Sticky navbar visual effect only (no scrollTop manipulation)
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
@@ -121,7 +120,6 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
 
   const fallbackSections: LandingSection[] = React.useMemo(
     () => [
-      // Tu fallbackSections completo aquí (lo copié del código original)
       {
         type: 'heroLeadMagnet',
         id: 'inicio',
@@ -152,9 +150,8 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
           badgeText: '+2,500 descargas esta semana',
         },
       },
-      // ... (todas las otras sections del fallback, copia del original)
-      // Para no hacer el mensaje eterno, asumo que copias el fallback completo del código original.
-      // Si necesitas el fallback completo, dime y te lo doy en partes.
+      // Copia el resto del fallbackSections del código original aquí (todas las sections)
+      // Para no hacer el mensaje eterno, mantén el original.
     ],
     []
   );
@@ -178,19 +175,19 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
       ].includes(s.type)
     );
 
-  // ... (el resto del código original: howItWorksIcon, stepBgClass, stepIconClass, normalizeVideoUrl, renderSection con todos los cases, etc.)
+  // ... (mantén el resto del código original: howItWorksIcon, stepBgClass, stepIconClass, normalizeVideoUrl, renderSection con todos los cases, return, etc.)
 
   return (
     <div className="w-full bg-white">
       {isV2Landing ? (
         <>
-          {/* Premium sticky navbar (no scroll manipulation) */}
+          {/* Premium sticky navbar */}
           <div
             className={`sticky top-0 z-50 w-full transition ${
               isScrolled ? 'bg-white/85 backdrop-blur-md border-b border-gray-200 shadow-xs' : 'bg-transparent'
             }`}
           >
-            {/* ... navbar code del original */}
+            {/* navbar code original */}
           </div>
           <main className="mx-auto flex w-full max-w-6xl flex-col bg-white">
             {effectiveSections.map((section) => renderSection(section))}
