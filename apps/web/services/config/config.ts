@@ -158,7 +158,10 @@ export const getOrgFromUri = () => {
 }
 
 export const getDefaultOrg = () => {
-  return getConfig('NEXT_PUBLIC_NEXO_DEFAULT_ORG', 'default')
+  // In this codebase the canonical default org slug is "defaultorg" (see API autoinstall).
+  // Allow overrides via either NEXT_PUBLIC_NEXO_DEFAULT_ORG or NEXT_PUBLIC_DEFAULT_ORG.
+  const fallback = isProd ? 'defaultorg' : 'default'
+  return env('NEXT_PUBLIC_NEXO_DEFAULT_ORG', 'NEXT_PUBLIC_DEFAULT_ORG') || fallback
 }
 
 
