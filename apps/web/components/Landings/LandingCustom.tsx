@@ -5,6 +5,9 @@ import {
   LandingAccentColorKey,
   LandingColoredTextSegment,
   LandingFaqSection,
+  LandingSchemaVersion,
+  LandingSection,
+} from '@components/Dashboard/Pages/Org/OrgEditLanding/landing_types'
 import useSWR from 'swr'
 import { getOrgCourses } from '@services/courses/courses'
 import { useLHSession } from '@components/Contexts/LHSessionContext'
