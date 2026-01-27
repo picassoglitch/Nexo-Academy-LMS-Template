@@ -7,6 +7,7 @@ from src.router import v1_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+import os
 from fastapi_jwt_auth.exceptions import AuthJWTException
 from fastapi.middleware.gzip import GZipMiddleware
 from src.core.ee_hooks import register_ee_middlewares
@@ -85,8 +86,16 @@ def authjwt_exception_handler(request: Request, exc: AuthJWTException):
     )
 
 
-# Static Files
-app.mount("/content", StaticFiles(directory="content"), name="content")
+# Static Files (uploaded media)
+# IMPORTANT: In production, set NEXO_CONTENT_ROOT to a persistent disk mount (e.g. "/data/content")
+# so uploads survive restarts.
+content_root = (
+    getattr(getattr(nexo_config.hosting_config, "content_delivery", None), "filesystem_root", None)
+    or os.getenv("NEXO_CONTENT_ROOT")
+    or "content"
+)
+os.makedirs(content_root, exist_ok=True)
+app.mount("/content", StaticFiles(directory=content_root), name="content")
 
 # Global Routes
 app.include_router(v1_router)

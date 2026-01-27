@@ -12,6 +12,18 @@ def ensure_directory_exists(directory: str):
         os.makedirs(directory)
 
 
+def _get_filesystem_root() -> str:
+    """
+    Root directory where uploaded content is stored when using filesystem content delivery.
+
+    Defaults to "content" for local dev, but should be set to a persistent disk mount
+    in production (e.g. Render) via NEXO_CONTENT_ROOT.
+    """
+    nexo_config = get_nexo_config()
+    root = getattr(nexo_config.hosting_config.content_delivery, "filesystem_root", None) or "content"
+    return str(root).rstrip("/\\")
+
+
 async def upload_file(
     file: UploadFile,
     directory: str,
@@ -82,14 +94,14 @@ async def upload_content(
                 detail=f"File format {file_format} not allowed",
             )
 
-    ensure_directory_exists(f"content/{type_of_dir}/{uuid}/{directory}")
+    filesystem_root = _get_filesystem_root()
+    rel_dir = os.path.join(type_of_dir, uuid, directory)
+    full_dir = os.path.join(filesystem_root, rel_dir)
+    ensure_directory_exists(full_dir)
 
     if content_delivery == "filesystem":
         # upload file to server
-        with open(
-            f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
-            "wb",
-        ) as f:
+        with open(os.path.join(full_dir, file_and_format), "wb") as f:
             f.write(file_binary)
             f.close()
 
@@ -102,18 +114,15 @@ async def upload_content(
             endpoint_url=nexo_config.hosting_config.content_delivery.s3api.endpoint_url,
         )
 
-        # Upload file to server
-        with open(
-            f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
-            "wb",
-        ) as f:
+        # Upload file to server (staging) then to s3
+        with open(os.path.join(full_dir, file_and_format), "wb") as f:
             f.write(file_binary)
             f.close()
 
         print("Uploading to s3 using boto3...")
         try:
             s3.upload_file(
-                f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
+                os.path.join(full_dir, file_and_format),
                 "nexo-media",
                 f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
             )

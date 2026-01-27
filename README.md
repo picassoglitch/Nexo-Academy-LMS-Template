@@ -66,6 +66,16 @@ TLDR: Run `docker-compose up -d` and inspect the logs, should be ready to go in 
 
 For a detailed step-by-step guide on configuring the backend and frontend, please refer to the [Development Guide](/dev/DEVELOPMENT.md).
 
+## Media uploads persistence (logos, favicons, thumbnails)
+The API stores uploaded media under a **content directory** and serves it at `/content/...`.
+On platforms like Render, the container filesystem is **ephemeral**, so uploads will disappear after a restart unless you use persistent storage.
+
+- **Recommended (Render)**: attach a **Persistent Disk** to the **API** service and set:
+  - **ENV var**: `NEXO_CONTENT_ROOT=/data/content` (use your disk mount path)
+  - Restart / redeploy the API service
+
+The API will automatically mount `/content` from `NEXO_CONTENT_ROOT`, so uploaded images survive restarts.
+
 ## Tech
 
 LearnHouse uses a number of open source projects to work properly:

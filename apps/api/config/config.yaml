@@ -24,6 +24,9 @@ hosting_config:
   allowed_regexp: \b((?:https?://)[^\s/$.?#].[^\s]*)\b
   content_delivery:
     type: filesystem
+    # For production persistence (e.g. Render persistent disk), set env NEXO_CONTENT_ROOT
+    # or set this to an absolute path like "/data/content".
+    filesystem_root: "content"
     s3api:
       bucket_name: ''
       endpoint_url: ''

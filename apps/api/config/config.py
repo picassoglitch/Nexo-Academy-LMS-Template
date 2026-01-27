@@ -41,6 +41,9 @@ class S3ApiConfig(BaseModel):
 
 class ContentDeliveryConfig(BaseModel):
     type: Literal["filesystem", "s3api"]
+    # When type="filesystem", store uploaded media under this directory.
+    # In production (e.g. Render), point this to a persistent disk mount like "/data/content".
+    filesystem_root: str | None = None
     s3api: S3ApiConfig
 
 
@@ -219,8 +222,19 @@ def get_nexo_config() -> NexoConfig:
         .get("endpoint_url")
     ) or env_endpoint_url
 
+    # Content (uploads) root directory
+    # NOTE: Render containers lose their filesystem on restart unless you attach a persistent disk.
+    env_content_root = _first_env("NEXO_CONTENT_ROOT", "LEARNHOUSE_CONTENT_ROOT", "CONTENT_ROOT")
+    yaml_content_root = (
+        yaml_config.get("hosting_config", {})
+        .get("content_delivery", {})
+        .get("filesystem_root")
+    )
+    content_root = (env_content_root or yaml_content_root or "content").strip()
+
     content_delivery = ContentDeliveryConfig(
         type=content_delivery_type,  # type: ignore
+        filesystem_root=content_root if content_delivery_type == "filesystem" else None,
         s3api=S3ApiConfig(bucket_name=bucket_name, endpoint_url=endpoint_url),  # type: ignore
     )
 
