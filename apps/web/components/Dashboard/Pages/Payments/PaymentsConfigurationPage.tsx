@@ -36,6 +36,7 @@ const PaymentsConfigurationPage: React.FC = () => {
     const [stripeClientId, setStripeClientId] = useState('');
     const [keysStatus, setKeysStatus] = useState<{secret?: boolean; publishable?: boolean; clientId?: boolean} | null>(null);
     const [checkingKeys, setCheckingKeys] = useState(false);
+    const isDev = process.env.NODE_ENV === 'development';
 
     // When Stripe OAuth finishes in a popup, it will postMessage back so we can refresh state.
     useEffect(() => {
@@ -119,7 +120,7 @@ const PaymentsConfigurationPage: React.FC = () => {
                 onOpenChange={setShowKeysHelp}
                 minHeight="no-min"
                 dialogTitle="Stripe keys required"
-                dialogDescription="Set these environment variables for the API, then restart the API and click Connect again."
+                dialogDescription="Set these environment variables on the API service (Render/hosting), restart the API, then click Connect again."
                 dialogContent={
                     <div className="space-y-4">
                         <div className="text-sm text-gray-600">
@@ -163,8 +164,13 @@ const PaymentsConfigurationPage: React.FC = () => {
                             <div>$env:LEARNHOUSE_STRIPE_CLIENT_ID=&quot;{stripeClientId || 'ca_...'}&quot;</div>
                         </div>
 
-                        <div className="text-xs text-gray-500">
-                            Restart the API after setting these vars: <span className="font-mono">uv run app.py</span>
+                        <div className="text-xs text-gray-500 space-y-1">
+                            <div>
+                                Local dev: restart the API after setting these vars: <span className="font-mono">uv run app.py</span>
+                            </div>
+                            <div>
+                                Render: add these vars in your <span className="font-semibold">API</span> service environment, then click <span className="font-semibold">Manual Deploy / Restart</span>.
+                            </div>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -199,6 +205,7 @@ const PaymentsConfigurationPage: React.FC = () => {
                             <Button
                                 type="button"
                                 variant="secondary"
+                                className={isDev ? undefined : 'hidden'}
                                 disabled={
                                     checkingKeys ||
                                     !access_token ||
@@ -234,7 +241,11 @@ const PaymentsConfigurationPage: React.FC = () => {
                                     } catch (e) {
                                         console.error(e);
                                         const msg = e instanceof Error ? e.message : 'Failed to save keys to API dev config';
-                                        toast.error(msg);
+                                        toast.error(
+                                            isDev
+                                                ? msg
+                                                : 'Dev-only endpoint is disabled in production. Set env vars on your API service and restart it.'
+                                        );
                                     } finally {
                                         setCheckingKeys(false);
                                     }
