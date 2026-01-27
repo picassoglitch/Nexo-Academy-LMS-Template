@@ -89,7 +89,13 @@ const PaymentsConfigurationPage: React.FC = () => {
     const handleStripeOnboarding = async () => {
         try {
             setIsOnboardingLoading(true);
-            const { connect_url } = await getStripeOnboardingLink(org.id, access_token, getUriWithoutOrg('/payments/stripe/connect/oauth'));
+            // Stripe requires the redirect URI to match EXACTLY what's configured in Stripe Connect settings.
+            // In production we should always use the browser origin (https://...) instead of relying on build-time protocol flags.
+            const redirectUri =
+                typeof window !== 'undefined'
+                    ? new URL('/payments/stripe/connect/oauth', window.location.origin).toString()
+                    : getUriWithoutOrg('/payments/stripe/connect/oauth');
+            const { connect_url } = await getStripeOnboardingLink(org.id, access_token, redirectUri);
             window.open(connect_url, '_blank');
         } catch (error) {
             console.error('Error getting onboarding link:', error);
