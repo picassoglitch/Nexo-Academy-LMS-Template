@@ -118,6 +118,28 @@ export default async function proxy(req: NextRequest) {
 
   // Stripe Checkout return page (post-checkout verification happens in-app).
   // Do NOT rewrite under /orgs/*, otherwise the route won't exist (it's shared and org is provided via query/cookie).
+  if (req.nextUrl.pathname.startsWith('/payments/stripe/checkout/start')) {
+    const searchParams = req.nextUrl.searchParams
+    const orgslug = searchParams.get('orgslug') || cookie_orgslug || (default_org as string)
+    const rewriteUrl = new URL('/payments/stripe/checkout/start', req.url)
+
+    // Preserve all original search parameters
+    searchParams.forEach((value, key) => {
+      rewriteUrl.searchParams.append(key, value)
+    })
+    rewriteUrl.searchParams.set('orgslug', orgslug)
+
+    const response = NextResponse.rewrite(rewriteUrl)
+    const NEXO_TOP_DOMAIN = getNEXO_TOP_DOMAIN_VAL()
+    response.cookies.set({
+      name: 'nexo_current_orgslug',
+      value: orgslug,
+      domain: NEXO_TOP_DOMAIN == 'localhost' ? '' : NEXO_TOP_DOMAIN,
+      path: '/',
+    })
+    return response
+  }
+
   if (req.nextUrl.pathname.startsWith('/payments/stripe/checkout/return')) {
     const searchParams = req.nextUrl.searchParams
     const orgslug = searchParams.get('orgslug') || cookie_orgslug || (default_org as string)
