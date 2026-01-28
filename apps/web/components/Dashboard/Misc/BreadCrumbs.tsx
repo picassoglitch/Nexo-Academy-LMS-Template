@@ -1,11 +1,11 @@
 'use client';
-import { BookCopy, ChevronRight, CreditCard, School, User, Users, Backpack } from 'lucide-react'
+import { BookCopy, ChevronRight, CreditCard, School, User, Users, Backpack, Handshake } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type BreadCrumbsProps = {
-  type: 'courses' | 'user' | 'users' | 'org' | 'orgusers' | 'assignments' | 'payments'
+  type: 'courses' | 'user' | 'users' | 'org' | 'orgusers' | 'assignments' | 'payments' | 'affiliates'
   last_breadcrumb?: string
 }
 
@@ -49,6 +49,12 @@ function BreadCrumbs(props: BreadCrumbsProps) {
           icon: <CreditCard size={13} className="text-black" />,
           label: t('common.payments'),
           href: '/dash/payments'
+        }
+      case 'affiliates':
+        return {
+          icon: <Handshake size={13} className="text-black" />,
+          label: 'Affiliates',
+          href: '/dash/affiliates'
         }
       default:
         return null

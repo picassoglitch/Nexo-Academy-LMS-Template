@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from src.core.events.database import get_db_session
 from src.security.auth import get_current_user
-from src.db.users import PublicUser
+from src.db.users import PublicUser, AnonymousUser
 from src.db.affiliates.affiliates import (
     AffiliateCreate,
     AffiliateProgramUpdate,
@@ -100,10 +100,9 @@ async def api_track_click(
     request: Request,
     body: TrackClickBody,
     db_session: Session = Depends(get_db_session),
-    current_user: PublicUser = Depends(get_current_user),
 ):
-    # This endpoint is safe to call without a real logged-in user, but current stack always sends a user.
-    return await track_affiliate_click(request, body.org_id, body.code, body.landing_url, current_user, db_session)
+    # Public endpoint; safe to call without auth (used by /r/:code).
+    return await track_affiliate_click(request, body.org_id, body.code, body.landing_url, AnonymousUser(), db_session)
 
 
 class ApplyCodeBody(BaseModel):

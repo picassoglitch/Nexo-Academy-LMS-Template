@@ -1,7 +1,7 @@
 'use client'
 import { useOrg } from '@components/Contexts/OrgContext'
 import { signOut } from 'next-auth/react'
-import { Backpack, BadgeDollarSign, BookCopy, ChevronLeft, ChevronRight, HelpCircle, Home, LogOut, Package2, School, Settings, Users } from 'lucide-react'
+import { Backpack, BadgeDollarSign, BookCopy, ChevronLeft, ChevronRight, Handshake, HelpCircle, Home, LogOut, Package2, School, Settings, Users } from 'lucide-react'
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import UserAvatar from '../../Objects/UserAvatar'
@@ -144,6 +144,12 @@ function DashLeftMenu() {
               href="/dash/payments/customers" 
               icon={<BadgeDollarSign size={18} />} 
               label={t('common.payments')} 
+              isCollapsed={isCollapsed} 
+            />
+            <MenuLink 
+              href="/dash/affiliates" 
+              icon={<Handshake size={18} />} 
+              label={'Affiliates'} 
               isCollapsed={isCollapsed} 
             />
             <MenuLink 
