@@ -776,6 +776,14 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                     'Reservar mi acompañamiento',
                   ])
                   const ctaLabel = legacyLabels.has(rawLabel) ? `Elegir ${plan.name}` : rawLabel
+                  const checkoutHref =
+                    plan.productId && plan.productId > 0
+                      ? `/payments/stripe/checkout/start?org_id=${encodeURIComponent(
+                          String(orgId)
+                        )}&product_id=${encodeURIComponent(String(plan.productId))}&orgslug=${encodeURIComponent(
+                          orgslug
+                        )}&return_to=${encodeURIComponent('/?orgslug=' + orgslug)}`
+                      : null
                   return (
                     <div
                       key={idx}
@@ -825,7 +833,7 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                       </ul>
 
                       <a
-                        href={plan.buttonHref}
+                        href={checkoutHref || plan.buttonHref}
                         className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-[#FF6200] px-5 py-3 font-extrabold text-white shadow-sm hover:bg-[#E85800] focus:outline-hidden focus:ring-2 focus:ring-[#FF6200]/30"
                       >
                         {ctaLabel}

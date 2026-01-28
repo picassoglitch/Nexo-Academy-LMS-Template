@@ -11,7 +11,7 @@ import { useFormik } from 'formik'
 import { getOrgLogoMediaDirectory } from '@services/media/media'
 import React from 'react'
 import { AlertTriangle, UserRoundPlus } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from "next-auth/react"
 import { getUriWithOrg, getUriWithoutOrg } from '@services/config/config'
@@ -27,6 +27,7 @@ const LoginClient = (props: LoginClientProps) => {
   const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const router = useRouter();
+  const searchParams = useSearchParams();
   const session = useLHSession() as any;
 
   const validate = (values: any) => {
@@ -65,11 +66,16 @@ const LoginClient = (props: LoginClientProps) => {
         return;
       }
       
+      const callbackUrl =
+        searchParams?.get('callbackUrl') ||
+        searchParams?.get('return_to') ||
+        '/redirect_from_auth'
+
       const res = await signIn('credentials', {
         redirect: false,
         email: values.email,
         password: values.password,
-        callbackUrl: '/redirect_from_auth'
+        callbackUrl
       });
       if (res && res.error) {
         setError(t('auth.wrong_email_password'));
@@ -78,7 +84,7 @@ const LoginClient = (props: LoginClientProps) => {
         await signIn('credentials', {
           email: values.email,
           password: values.password,
-          callbackUrl: '/redirect_from_auth'
+          callbackUrl
         });
       }
     },
@@ -198,7 +204,7 @@ const LoginClient = (props: LoginClientProps) => {
               <UserRoundPlus size={17} />
               <span>{t('auth.sign_up')}</span>
             </Link>
-            <button onClick={() => signIn('google', { callbackUrl: '/redirect_from_auth' })} className="flex justify-center py-3 text-md w-full bg-white text-slate-600 space-x-3 font-semibold text-center p-2 rounded-md shadow-sm hover:cursor-pointer">
+            <button onClick={() => signIn('google', { callbackUrl: (searchParams?.get('callbackUrl') || searchParams?.get('return_to') || '/redirect_from_auth') })} className="flex justify-center py-3 text-md w-full bg-white text-slate-600 space-x-3 font-semibold text-center p-2 rounded-md shadow-sm hover:cursor-pointer">
               <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" alt="" />
               <span>{t('auth.sign_in_with_google')}</span>
             </button>
