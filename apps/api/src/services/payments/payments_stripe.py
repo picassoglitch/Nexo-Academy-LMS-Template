@@ -20,6 +20,7 @@ from src.services.payments.payments_config import (
 from sqlmodel import select
 from datetime import datetime
 from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+import re
 
 from src.services.payments.payments_users import (
     create_payment_user,
@@ -92,15 +93,28 @@ async def create_stripe_product(
 
     stripe_acc_id = await get_stripe_connected_account_id(request, org_id, current_user, db_session)
 
+    def _stripe_marketing_features(benefits: str | None):
+        """
+        Stripe Product marketing_features[].name has a hard 80 character limit.
+        Users often enter benefits as multiline text; we support newline or comma separated values.
+        """
+        if not benefits:
+            return []
+
+        # Split on commas OR newlines, trim whitespace, drop empties.
+        parts = [p.strip() for p in re.split(r"[,\n\r]+", benefits) if p.strip()]
+
+        # Stripe allows only short strings here; truncate defensively to avoid 400s.
+        out = []
+        for p in parts:
+            out.append({"name": p[:80]})
+        return out
+
     try:
         product = stripe.Product.create(
             name=product_data.name,
             description=product_data.description or "",
-            marketing_features=[
-                {"name": benefit.strip()}
-                for benefit in product_data.benefits.split(",")
-                if benefit.strip()
-            ],
+            marketing_features=_stripe_marketing_features(getattr(product_data, "benefits", None)),
             default_price_data=default_price_data,  # type: ignore
             stripe_account=stripe_acc_id,
         )

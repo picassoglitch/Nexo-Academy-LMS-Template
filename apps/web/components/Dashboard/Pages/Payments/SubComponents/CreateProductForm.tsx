@@ -19,7 +19,18 @@ const validationSchema = Yup.object().shape({
   amount: Yup.number()
     .min(1, 'Amount must be greater than zero')
     .required('Amount is required'),
-  benefits: Yup.string(),
+  benefits: Yup.string().test(
+    'benefits-max-80',
+    'Each benefit must be at most 80 characters (use one per line)',
+    (value) => {
+      if (!value) return true;
+      const parts = value
+        .split(/\r?\n|,/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return parts.every((p) => p.length <= 80);
+    }
+  ),
   currency: Yup.string().required('Currency is required'),
   product_type: Yup.string().oneOf(['one_time', 'subscription']).required('Product type is required'),
   price_type: Yup.string().oneOf(['fixed_price', 'customer_choice']).required('Price type is required'),
@@ -167,7 +178,7 @@ const CreateProductForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) =
 
             <div>
               <Label htmlFor="benefits">Benefits</Label>
-              <Field name="benefits" as={Textarea} placeholder="Product Benefits" />
+              <Field name="benefits" as={Textarea} placeholder={"One benefit per line (max 80 characters each)"} />
               <ErrorMessage name="benefits" component="div" className="text-red-500 text-sm mt-1" />
             </div>
           </div>
