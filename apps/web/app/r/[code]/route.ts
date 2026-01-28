@@ -7,8 +7,12 @@ import { getAPIUrl } from '@services/config/config'
  *
  * Sets a cookie so signup/checkout can attribute the user.
  */
-export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
-  const code = (params.code || '').trim()
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
+) {
+  const p = await params
+  const code = (p.code || '').trim()
   const orgId = req.nextUrl.searchParams.get('org_id') || ''
   const returnTo = req.nextUrl.searchParams.get('return_to') || '/'
 
