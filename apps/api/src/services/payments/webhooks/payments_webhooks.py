@@ -10,6 +10,8 @@ from src.services.payments.payments_stripe import get_stripe_internal_credential
 from src.db.payments.payments import PaymentsConfig, PaymentsConfigUpdate
 from src.services.payments.payments_config import update_payments_config
 from src.services.payments.utils.stripe_utils import get_org_id_from_stripe_account
+from src.services.affiliates.affiliates import record_commission_for_payment
+from src.db.payments.payments_users import PaymentsUser
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,7 @@ async def handle_stripe_webhook(
     try:
         event_type = event.type
         event_data = event.data.object
+        event_id = getattr(event, "id", None) or ""
 
         # Get organization ID based on the event type
         stripe_account_id = event.account
@@ -123,6 +126,17 @@ async def handle_stripe_webhook(
 
             if session.get("mode") == "subscription":
                 if session.get("subscription"):
+                    # Persist subscription id on the PaymentsUser so we can attribute recurring invoices.
+                    subscription_id = session.get("subscription")
+                    statement = select(PaymentsUser).where(PaymentsUser.id == payment_user_id, PaymentsUser.org_id == org_id)
+                    pu = db_session.exec(statement).first()
+                    if pu:
+                        data = pu.provider_specific_data or {}
+                        data["stripe_subscription_id"] = subscription_id
+                        data["stripe_checkout_session_id"] = session.get("id")
+                        pu.provider_specific_data = data
+                        db_session.add(pu)
+                        db_session.commit()
                     await update_payment_user_status(
                         request=request,
                         org_id=org_id,
@@ -131,6 +145,17 @@ async def handle_stripe_webhook(
                         current_user=InternalUser(),
                         db_session=db_session,
                     )
+                    # Record affiliate commission for cycle 1
+                    try:
+                        record_commission_for_payment(
+                            org_id=org_id,
+                            payment_user_id=payment_user_id,
+                            provider_event_id=event_id or session.get("id") or f"checkout:{payment_user_id}",
+                            provider_subscription_id=str(subscription_id) if subscription_id else None,
+                            db_session=db_session,
+                        )
+                    except Exception:
+                        pass
             else:
                 if session.get("payment_status") == "paid":
                     await update_payment_user_status(
@@ -141,6 +166,17 @@ async def handle_stripe_webhook(
                         current_user=InternalUser(),
                         db_session=db_session,
                     )
+                    # Record affiliate commission for one-time payment
+                    try:
+                        record_commission_for_payment(
+                            org_id=org_id,
+                            payment_user_id=payment_user_id,
+                            provider_event_id=event_id or session.get("id") or f"checkout:{payment_user_id}",
+                            provider_subscription_id=None,
+                            db_session=db_session,
+                        )
+                    except Exception:
+                        pass
 
         elif event_type == "customer.subscription.deleted":
             subscription = event_data
@@ -154,6 +190,29 @@ async def handle_stripe_webhook(
                 current_user=InternalUser(),
                 db_session=db_session,
             )
+
+        elif event_type == "invoice.paid":
+            invoice = event_data
+            sub_id = invoice.get("subscription")
+            if sub_id:
+                try:
+                    sub = stripe.Subscription.retrieve(sub_id, stripe_account=stripe_account_id)
+                    payment_user_id_raw = (sub.get("metadata") or {}).get("payment_user_id")
+                    if payment_user_id_raw:
+                        payment_user_id = int(payment_user_id_raw)
+                        # Record affiliate commission for recurring cycle
+                        try:
+                            record_commission_for_payment(
+                                org_id=org_id,
+                                payment_user_id=payment_user_id,
+                                provider_event_id=event_id or f"invoice:{invoice.get('id')}",
+                                provider_subscription_id=str(sub_id),
+                                db_session=db_session,
+                            )
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
         elif event_type == "payment_intent.payment_failed":
             payment_intent = event_data

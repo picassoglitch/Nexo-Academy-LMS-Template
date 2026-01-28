@@ -26,6 +26,7 @@ from src.services.payments.payments_users import (
     create_payment_user,
     delete_payment_user,
 )
+from src.services.affiliates.affiliates import record_commission_for_payment
 
 
 async def get_stripe_connected_account_id(
@@ -566,6 +567,25 @@ async def verify_stripe_checkout_session(
     db_session.add(payment_user)
     db_session.commit()
     db_session.refresh(payment_user)
+
+    # Record affiliate commission:
+    # - one-time: on paid/complete
+    # - subscription: on activation and subsequent invoices (handled by webhooks), but this also covers local dev.
+    try:
+        provider_subscription_id = (
+            provider_data.get("stripe_subscription_id")
+            if isinstance(provider_data, dict)
+            else None
+        )
+        record_commission_for_payment(
+            org_id=org_id,
+            payment_user_id=payment_user.id,
+            provider_event_id=checkout.get("id") or (checkout.get("metadata") or {}).get("payment_user_id") or f"verify:{payment_user.id}",
+            provider_subscription_id=provider_subscription_id,
+            db_session=db_session,
+        )
+    except Exception:
+        pass
 
     return {
         "success": True,

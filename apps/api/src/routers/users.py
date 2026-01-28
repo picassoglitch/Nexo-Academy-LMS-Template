@@ -20,6 +20,9 @@ from src.db.users import (
     UserUpdate,
     UserUpdatePassword,
 )
+from pydantic import BaseModel
+from typing import Optional
+from src.services.affiliates.affiliates import apply_affiliate_code_to_user
 from src.services.users.users import (
     authorize_user_action,
     create_user,
@@ -99,7 +102,18 @@ async def api_create_user_with_orgid(
             detail="You need an invite to join this organization",
         )
     else:
-        return await create_user(request, db_session, current_user, user_object, org_id)
+        # Optional affiliate attribution (sent from web during signup).
+        # We accept affiliate_code via the raw request body so we don't have to alter core UserCreate model.
+        body_raw = await request.json()
+        affiliate_code = body_raw.get("affiliate_code") if isinstance(body_raw, dict) else None
+        created = await create_user(request, db_session, current_user, user_object, org_id)
+        try:
+            if affiliate_code and created and getattr(created, "id", None):
+                apply_affiliate_code_to_user(org_id, int(created.id), str(affiliate_code), db_session)  # type: ignore
+        except Exception:
+            # Never fail signup due to affiliate tracking.
+            pass
+        return created
 
 
 @router.post("/{org_id}/invite/{invite_code}", response_model=UserRead, tags=["users"])
@@ -121,9 +135,17 @@ async def api_create_user_with_orgid_and_invite(
         await get_org_join_mechanism(request, org_id, current_user, db_session)
         == "inviteOnly"
     ):
-        return await create_user_with_invite(
+        body_raw = await request.json()
+        affiliate_code = body_raw.get("affiliate_code") if isinstance(body_raw, dict) else None
+        created = await create_user_with_invite(
             request, db_session, current_user, user_object, org_id, invite_code
         )
+        try:
+            if affiliate_code and created and getattr(created, "id", None):
+                apply_affiliate_code_to_user(org_id, int(created.id), str(affiliate_code), db_session)  # type: ignore
+        except Exception:
+            pass
+        return created
     else:
         raise HTTPException(
             status_code=403,

@@ -70,6 +70,19 @@ function OpenSignUpComponent() {
       setError('')
       setMessage('')
       setIsSubmitting(true)
+      // Optional affiliate attribution (set by /r/:code).
+      try {
+        const m = document.cookie.match(/(?:^|; )nexo_affiliate_code=([^;]+)/)
+        if (m?.[1]) {
+          const raw = decodeURIComponent(m[1])
+          const orgId = String(values.org_id || '')
+          const code = raw.includes(':') ? raw.split(':')[1] : raw
+          const cookieOrgId = raw.includes(':') ? raw.split(':')[0] : ''
+          if (!cookieOrgId || cookieOrgId === orgId) {
+            ;(values as any).affiliate_code = code
+          }
+        }
+      } catch {}
       let res = await signup(values)
       let message = await res.json()
       if (res.status == 200) {

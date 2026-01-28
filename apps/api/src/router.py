@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from src.routers import health
 from src.routers import usergroups
 from src.routers import dev, trail, users, auth, orgs, roles, search
+from src.routers import affiliates
 from src.routers.ai import ai
 from src.routers.courses import chapters, collections, courses, assignments, certifications
 from src.routers.courses.activities import activities, blocks
@@ -22,6 +23,7 @@ v1_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 v1_router.include_router(blocks.router, prefix="/blocks", tags=["blocks"])
 v1_router.include_router(courses.router, prefix="/courses", tags=["courses"])
 v1_router.include_router(search.router, prefix="/search", tags=["search"])
+v1_router.include_router(affiliates.router, prefix="/affiliates", tags=["affiliates"])
 v1_router.include_router(
     assignments.router, prefix="/assignments", tags=["assignments"]
 )
