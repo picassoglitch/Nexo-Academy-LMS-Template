@@ -143,7 +143,7 @@ async def api_unlink_course_from_product(
     db_session: Session = Depends(get_db_session),
 ):
     return await unlink_course_from_product(
-        request, org_id, course_id, current_user, db_session
+        request, org_id, course_id, product_id, current_user, db_session
     )
 
 @router.get("/{org_id}/products/{product_id}/courses")

@@ -34,15 +34,15 @@ async def link_course_to_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Check if course is already linked to another product
-    statement = select(PaymentsCourse).where(PaymentsCourse.course_id == course.id)
+    # Allow linking a course to multiple products, but prevent duplicate links
+    statement = select(PaymentsCourse).where(
+        PaymentsCourse.course_id == course.id,
+        PaymentsCourse.payment_product_id == product_id,
+        PaymentsCourse.org_id == org_id,
+    )
     existing_link = db_session.exec(statement).first()
-
     if existing_link:
-        raise HTTPException(
-            status_code=400,
-            detail="Course is already linked to a product"
-        )
+        raise HTTPException(status_code=400, detail="Course is already linked to this product")
 
     # Create new payment course link
     payment_course = PaymentsCourse(
@@ -60,6 +60,7 @@ async def unlink_course_from_product(
     request: Request,
     org_id: int,
     course_id: int,
+    product_id: int,
     current_user: PublicUser | AnonymousUser,
     db_session: Session,
 ):
@@ -76,14 +77,15 @@ async def unlink_course_from_product(
     # Find and delete the payment course link
     statement = select(PaymentsCourse).where(
         PaymentsCourse.course_id == course.id,
-        PaymentsCourse.org_id == org_id
+        PaymentsCourse.payment_product_id == product_id,
+        PaymentsCourse.org_id == org_id,
     )
     payment_course = db_session.exec(statement).first()
 
     if not payment_course:
         raise HTTPException(
             status_code=404,
-            detail="Course is not linked to any product"
+            detail="Course is not linked to this product"
         )
 
     db_session.delete(payment_course)
