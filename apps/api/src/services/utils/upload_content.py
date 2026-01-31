@@ -106,49 +106,35 @@ async def upload_content(
                 detail=f"File format {file_format} not allowed",
             )
 
-    filesystem_root = _get_filesystem_root()
-    rel_dir = os.path.join(type_of_dir, uuid, directory)
-    full_dir = os.path.join(filesystem_root, rel_dir)
-    ensure_directory_exists(full_dir)
-
     if content_delivery == "filesystem":
+        filesystem_root = _get_filesystem_root()
+        rel_dir = os.path.join(type_of_dir, uuid, directory)
+        full_dir = os.path.join(filesystem_root, rel_dir)
+        ensure_directory_exists(full_dir)
+
         # upload file to server
         with open(os.path.join(full_dir, file_and_format), "wb") as f:
             f.write(file_binary)
             f.close()
 
     elif content_delivery == "s3api":
-        # Upload to server then to s3 (AWS Keys are stored in environment variables and are loaded by boto3)
-        # TODO: Improve implementation of this
-        print("Uploading to s3...")
+        # Upload directly to S3 from memory.
         bucket_name, endpoint_url = _get_s3_bucket_and_endpoint()
+        key = f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}"
+
         s3 = boto3.client(
             "s3",
             endpoint_url=endpoint_url,
         )
 
-        # Upload file to server (staging) then to s3
-        with open(os.path.join(full_dir, file_and_format), "wb") as f:
-            f.write(file_binary)
-            f.close()
-
-        print("Uploading to s3 using boto3...")
-        key = f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}"
         try:
-            s3.upload_file(
-                os.path.join(full_dir, file_and_format),
-                bucket_name,
-                key,
-            )
-        except ClientError as e:
-            print(e)
-
-        print("Checking if file exists in s3...")
-        try:
+            s3.put_object(Bucket=bucket_name, Key=key, Body=file_binary)
+            # Verify object exists (helps surface auth/bucket issues clearly)
             s3.head_object(
                 Bucket=bucket_name,
                 Key=key,
             )
-            print("File upload successful!")
+        except ClientError as e:
+            raise HTTPException(status_code=500, detail=f"S3 upload failed: {e}")
         except Exception as e:
-            print(f"An error occurred: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"S3 upload failed: {e}")
