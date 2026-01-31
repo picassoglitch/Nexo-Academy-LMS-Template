@@ -164,7 +164,8 @@ def get_nexo_config() -> NexoConfig:
 
     # Allowed origins should be a comma separated string
     if env_allowed_origins:
-        env_allowed_origins = env_allowed_origins.split(",")
+        # Render/UI often inserts spaces/newlines; normalize to avoid CORS mismatches.
+        env_allowed_origins = [x.strip() for x in env_allowed_origins.split(",") if x.strip()]
     env_allowed_regexp = _first_env("NEXO_ALLOWED_REGEXP", "LEARNHOUSE_ALLOWED_REGEXP")
     env_self_hosted = _first_env("NEXO_SELF_HOSTED", "LEARNHOUSE_SELF_HOSTED")
     env_sql_connection_string = _first_env(
