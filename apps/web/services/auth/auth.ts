@@ -70,8 +70,8 @@ export async function loginWithOAuthToken(
 
 export async function sendResetLink(email: string, org_id: number) {
   const result = await fetch(
-    `${getAPIUrl()}users/reset_password/send_reset_code/${email}?org_id=${org_id}`,
-    RequestBody('POST', null, null)
+    `${getAPIUrl()}users/reset_password/send_reset_code`,
+    RequestBody('POST', { email, org_id }, null)
   )
   const res = await getResponseMetadata(result)
   return res

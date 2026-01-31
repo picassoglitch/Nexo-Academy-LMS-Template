@@ -1,6 +1,8 @@
 from typing import Literal, List
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import EmailStr
+import logging
+import traceback
 from sqlmodel import Session
 from src.services.users.password_reset import (
     change_password_with_reset_code,
@@ -41,6 +43,12 @@ from src.services.courses.courses import get_user_courses
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+class ResetPasswordSendCodeBody(BaseModel):
+    email: EmailStr
+    org_id: int
 
 
 @router.get("/profile")
@@ -283,11 +291,58 @@ async def api_send_password_reset_email(
     org_id: int,
 ):
     """
-    Update User Password
+    DEPRECATED: use POST /reset_password/send_reset_code with JSON body.
     """
-    return await send_reset_password_code(
-        request, db_session, current_user, org_id, email
-    )
+    try:
+        raw = await request.body()
+        body_len = len(raw or b"")
+        logger.info(
+            "reset_password.send_reset_code legacy handler",
+            extra={"email": str(email), "org_id": org_id, "body_len": body_len},
+        )
+
+        return await send_reset_password_code(
+            request, db_session, current_user, org_id, email
+        )
+    except HTTPException:
+        # Pass through known HTTP errors
+        raise
+    except Exception:
+        logger.exception("reset_password.send_reset_code legacy handler failed")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/reset_password/send_reset_code", tags=["users"])
+async def api_send_password_reset_email_v2(
+    *,
+    request: Request,
+    db_session: Session = Depends(get_db_session),
+    current_user: PublicUser = Depends(get_current_user),
+    body: ResetPasswordSendCodeBody,
+):
+    """
+    Send a password reset code.
+
+    Body:
+      { "email": "user@example.com", "org_id": 1 }
+    """
+    try:
+        raw = await request.body()
+        body_len = len(raw or b"")
+        logger.info(
+            "reset_password.send_reset_code v2 handler",
+            extra={"email": str(body.email), "org_id": body.org_id, "body_len": body_len},
+        )
+        return await send_reset_password_code(
+            request, db_session, current_user, body.org_id, body.email
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("reset_password.send_reset_code v2 handler failed")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/user_id/{user_id}", tags=["users"])

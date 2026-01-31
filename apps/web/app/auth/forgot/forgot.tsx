@@ -50,7 +50,8 @@ function ForgotPasswordClient() {
             setIsSubmitting(true)
             let res = await sendResetLink(values.email, org?.id)
             if (res.status == 200) {
-                setMessage(res.data + ', ' + t('auth.check_email_message'))
+                // API returns { ok: true } even if the email does not exist (avoids user enumeration).
+                setMessage(t('auth.check_email_message'))
                 setIsSubmitting(false)
             } else {
                 setError(res.data.detail)

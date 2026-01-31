@@ -7,7 +7,6 @@ import {
 import { getNEXO_TOP_DOMAIN_VAL, getUriWithOrg } from '@services/config/config'
 import { getResponseMetadata } from '@services/utils/ts/requests'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import GoogleProvider from 'next-auth/providers/google'
 
 // Add type declarations at the top of the file
 declare global {
@@ -52,10 +51,6 @@ export const nextAuthOptions = {
         }
       },
     }),
-    GoogleProvider({
-      clientId: process.env.NEXO_GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.NEXO_GOOGLE_CLIENT_SECRET || '',
-    }),
   ],
   pages: {
     // Use relative paths so we always stay on the same origin (including dev port).
@@ -82,17 +77,6 @@ export const nextAuthOptions = {
       // First sign in with Credentials provider
       if (account?.provider == 'credentials' && user) {
         token.user = user;
-      }
-
-      // Sign up with Google
-      if (account?.provider == 'google' && user) {
-        let unsanitized_req = await loginWithOAuthToken(
-          user.email,
-          'google',
-          account.access_token
-        );
-        let userFromOAuth = await getResponseMetadata(unsanitized_req);
-        token.user = userFromOAuth.data;
       }
 
       // Refresh token only if it's close to expiring (1 minute before expiry)
