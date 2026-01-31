@@ -23,6 +23,18 @@ def _get_filesystem_root() -> str:
     root = getattr(nexo_config.hosting_config.content_delivery, "filesystem_root", None) or "content"
     return str(root).rstrip("/\\")
 
+def _get_s3_bucket_and_endpoint() -> tuple[str, str | None]:
+    nexo_config = get_nexo_config()
+    s3cfg = nexo_config.hosting_config.content_delivery.s3api
+    bucket = (getattr(s3cfg, "bucket_name", None) or "").strip()
+    endpoint = getattr(s3cfg, "endpoint_url", None)
+    if not bucket:
+        raise HTTPException(
+            status_code=500,
+            detail="S3 content delivery is enabled but NEXO_S3_API_BUCKET_NAME is not configured",
+        )
+    return bucket, endpoint
+
 
 async def upload_file(
     file: UploadFile,
@@ -109,9 +121,10 @@ async def upload_content(
         # Upload to server then to s3 (AWS Keys are stored in environment variables and are loaded by boto3)
         # TODO: Improve implementation of this
         print("Uploading to s3...")
+        bucket_name, endpoint_url = _get_s3_bucket_and_endpoint()
         s3 = boto3.client(
             "s3",
-            endpoint_url=nexo_config.hosting_config.content_delivery.s3api.endpoint_url,
+            endpoint_url=endpoint_url,
         )
 
         # Upload file to server (staging) then to s3
@@ -120,11 +133,12 @@ async def upload_content(
             f.close()
 
         print("Uploading to s3 using boto3...")
+        key = f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}"
         try:
             s3.upload_file(
                 os.path.join(full_dir, file_and_format),
-                "nexo-media",
-                f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
+                bucket_name,
+                key,
             )
         except ClientError as e:
             print(e)
@@ -132,8 +146,8 @@ async def upload_content(
         print("Checking if file exists in s3...")
         try:
             s3.head_object(
-                Bucket="nexo-media",
-                Key=f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}",
+                Bucket=bucket_name,
+                Key=key,
             )
             print("File upload successful!")
         except Exception as e:

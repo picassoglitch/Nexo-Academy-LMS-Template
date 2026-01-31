@@ -13,22 +13,17 @@ hosting_config:
   ssl: true
   port: 1338
   allowed_origins:
-  - http://localhost:3000
-    - http://127.0.0.1:3000
-  - http://localhost:3001
-    - http://127.0.0.1:3001
   - https://nexo-ai.world
   - https://www.nexo-ai.world
   cookies_config:
     domain: .nexo-ai.world
   allowed_regexp: \b((?:https?://)[^\s/$.?#].[^\s]*)\b
   content_delivery:
-    type: filesystem
-    # For production persistence (e.g. Render persistent disk), set env NEXO_CONTENT_ROOT
-    # or set this to an absolute path like "/data/content".
-    filesystem_root: "content"
+    type: s3api
+    # Production storage: use S3 (bucket + IAM credentials via env).
+    filesystem_root: ""
     s3api:
-      bucket_name: ''
+      bucket_name: 'nexoacademy'
       endpoint_url: ''
 mailing_config:
   resend_api_key: ''
@@ -37,7 +32,8 @@ database_config:
   # Set via env: NEXO_SQL_CONNECTION_STRING (or LEARNHOUSE_SQL_CONNECTION_STRING)
   sql_connection_string: ""
 redis_config:
-  redis_connection_string: redis://localhost:6379/0
+  # Set via env: NEXO_REDIS_CONNECTION_STRING / REDIS_URL
+  redis_connection_string: ""
 payments_config:
   stripe:
     # Set via env: NEXO_STRIPE_SECRET_KEY / NEXO_STRIPE_PUBLISHABLE_KEY

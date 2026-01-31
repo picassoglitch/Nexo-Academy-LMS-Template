@@ -39,11 +39,8 @@ function resolveApiUrl() {
   const explicit = env('NEXT_PUBLIC_NEXO_API_URL', 'NEXT_PUBLIC_API_URL')
   if (explicit) return ensureApiV1(explicit)
 
-  // Never default to localhost in production.
-  if (isProd) return 'https://api.nexo-ai.world/api/v1/'
-
-  // Local dev fallback only.
-  return 'http://localhost/api/v1/'
+  // Production default (avoid any localhost fallbacks).
+  return 'https://api.nexo-ai.world/api/v1/'
 }
 
 function resolveBackendUrl() {
@@ -53,8 +50,8 @@ function resolveBackendUrl() {
   const api = env('NEXT_PUBLIC_NEXO_API_URL', 'NEXT_PUBLIC_API_URL')
   if (api) return ensureTrailingSlash(api.replace(/\/api\/v1\/?$/, ''))
 
-  if (isProd) return 'https://api.nexo-ai.world/'
-  return 'http://localhost/'
+  // Production default (avoid any localhost fallbacks).
+  return 'https://api.nexo-ai.world/'
 }
 
 function maybeDebugLog() {
@@ -76,8 +73,8 @@ const getNEXO_API_URL = () => {
   return v
 }
 const getNEXO_BACKEND_URL = () => resolveBackendUrl()
-const getNEXO_DOMAIN = () => env('NEXT_PUBLIC_NEXO_DOMAIN', 'NEXT_PUBLIC_DOMAIN') || (isProd ? 'nexo-ai.world' : 'localhost')
-const getNEXO_TOP_DOMAIN = () => env('NEXT_PUBLIC_NEXO_TOP_DOMAIN', 'NEXT_PUBLIC_TOP_DOMAIN') || (isProd ? 'nexo-ai.world' : 'localhost')
+const getNEXO_DOMAIN = () => env('NEXT_PUBLIC_NEXO_DOMAIN', 'NEXT_PUBLIC_DOMAIN') || 'nexo-ai.world'
+const getNEXO_TOP_DOMAIN = () => env('NEXT_PUBLIC_NEXO_TOP_DOMAIN', 'NEXT_PUBLIC_TOP_DOMAIN') || 'nexo-ai.world'
 
 // Export getter functions for dynamic runtime configuration
 export const getNEXO_HTTP_PROTOCOL_VAL = getNEXO_HTTP_PROTOCOL
