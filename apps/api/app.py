@@ -80,8 +80,10 @@ app.add_event_handler("shutdown", shutdown_app(app))
 # JWT Exception Handler
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+    # fastapi-jwt-auth may raise 422 for malformed/expired tokens; treat as 401 for clearer UX.
+    status_code = 401 if getattr(exc, "status_code", None) == 422 else exc.status_code  # type: ignore
     return JSONResponse(
-        status_code=exc.status_code,  # type: ignore
+        status_code=status_code,  # type: ignore
         content={"detail": exc.message},  # type: ignore
     )
 

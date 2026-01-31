@@ -12,6 +12,7 @@ from src.services.dev.dev import isDevModeEnabled
 from src.services.users.users import security_verify_password
 from src.security.security import ALGORITHM, SECRET_KEY
 from fastapi_jwt_auth import AuthJWT
+from fastapi_jwt_auth.exceptions import AuthJWTException
 from typing import Optional
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -20,7 +21,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 #### JWT Auth ####################################################
 class Settings(BaseModel):
     authjwt_secret_key: str = "secret" if isDevModeEnabled() else SECRET_KEY
-    authjwt_token_location = {"cookies", "headers"}
+    # This project uses explicit Bearer tokens from the web app.
+    # Avoid reading arbitrary cookies (e.g. NextAuth session cookies) as JWTs.
+    authjwt_token_location = {"headers"}
     authjwt_cookie_csrf_protect = False
     authjwt_access_token_expires = (
         False if isDevModeEnabled() else timedelta(hours=8).total_seconds()
@@ -91,12 +94,15 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # NOTE: jwt_optional() still raises if a token is *present but invalid/expired*.
+    # In that case we treat the request as anonymous so public endpoints keep working
+    # and the frontend can prompt the user to log in again.
     try:
         Authorize.jwt_optional()
         username = Authorize.get_jwt_subject() or None
         token_data = TokenData(username=username)  # type: ignore
-    except JWTError:
-        raise credentials_exception
+    except (JWTError, AuthJWTException):
+        return AnonymousUser()
     if username:
         user = await security_get_user(request, db_session, email=token_data.username)  # type: ignore # treated as an email
         if user is None:
