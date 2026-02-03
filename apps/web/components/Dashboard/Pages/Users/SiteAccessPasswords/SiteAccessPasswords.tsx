@@ -59,7 +59,7 @@ export default function SiteAccessPasswords() {
       <form onSubmit={handleSubmit}>
         <FormLayout onSubmit={handleSubmit}>
           <FormField name="site_password">
-            <FormLabelAndMessage label={t('dashboard.site_access.site_password_label')} message={null} />
+            <FormLabelAndMessage label={t('dashboard.site_access.site_password_label')} />
             <Form.Control asChild>
               <Input
                 type="password"
@@ -71,7 +71,7 @@ export default function SiteAccessPasswords() {
             </Form.Control>
           </FormField>
           <FormField name="admin_password">
-            <FormLabelAndMessage label={t('dashboard.site_access.admin_password_label')} message={null} />
+            <FormLabelAndMessage label={t('dashboard.site_access.admin_password_label')} />
             <Form.Control asChild>
               <Input
                 type="password"
