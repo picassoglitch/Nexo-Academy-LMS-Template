@@ -154,13 +154,13 @@ export const HeaderProfileBox = () => {
             <li>
               <LanguageSwitcher />
             </li>
-            <li>
-              <Link
-                className="hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors text-sm font-bold text-gray-700"
-                href={{ pathname: getUriWithoutOrg('/login'), query: org ? { orgslug: org.slug } : null }} >{t('auth.login')}</Link>
-            </li>
             <li className="bg-black rounded-lg shadow-sm hover:bg-gray-800 transition-colors px-4 py-2 text-white text-xs sm:text-sm font-bold ml-1 sm:ml-2">
-              <Link href={{ pathname: getUriWithoutOrg('/signup'), query: org ? { orgslug: org.slug } : null }}>{t('auth.sign_up')}</Link>
+              <Link
+                className="text-white"
+                href={{ pathname: getUriWithoutOrg('/login'), query: org ? { orgslug: org.slug } : null }}
+              >
+                {t('auth.login')}
+              </Link>
             </li>
           </ul>
         </UnidentifiedArea>

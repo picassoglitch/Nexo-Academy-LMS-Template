@@ -99,12 +99,44 @@ async def get_current_user(
     # and the frontend can prompt the user to log in again.
     try:
         Authorize.jwt_optional()
-        username = Authorize.get_jwt_subject() or None
-        token_data = TokenData(username=username)  # type: ignore
+        subject = Authorize.get_jwt_subject() or None
+        token_data = TokenData(username=subject)  # type: ignore
     except (JWTError, AuthJWTException):
         return AnonymousUser()
-    if username:
-        user = await security_get_user(request, db_session, email=token_data.username)  # type: ignore # treated as an email
+    if subject:
+        # Password-only site access: no DB users; synthetic identity from JWT subject
+        if subject == "__site__":
+            public_user = PublicUser(
+                id=0,
+                user_uuid="user_site",
+                username="Member",
+                first_name="Site",
+                last_name="",
+                email="site@nexo.local",
+                avatar_image="",
+                bio="",
+                details={},
+                profile={},
+            )
+            request.state.user = public_user
+            return public_user
+        if subject == "__admin__":
+            public_user = PublicUser(
+                id=-1,
+                user_uuid="user_admin",
+                username="Admin",
+                first_name="Admin",
+                last_name="",
+                email="admin@nexo.local",
+                avatar_image="",
+                bio="",
+                details={},
+                profile={},
+            )
+            request.state.user = public_user
+            return public_user
+        # Normal login: subject is email, look up user in DB
+        user = await security_get_user(request, db_session, email=token_data.username)  # type: ignore
         if user is None:
             raise credentials_exception
         public_user = PublicUser(**user.model_dump())

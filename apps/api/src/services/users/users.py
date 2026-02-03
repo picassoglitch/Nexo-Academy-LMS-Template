@@ -438,12 +438,64 @@ async def read_user_by_username(
     return user
 
 
+async def _synthetic_site_session(db_session: Session, is_admin: bool) -> UserSession:
+    """Build a synthetic UserSession for password-only site/admin access (no DB user)."""
+    org = db_session.exec(select(Organization).where(Organization.slug == "defaultorg")).first()
+    if not org:
+        raise HTTPException(status_code=503, detail="Default organization not configured")
+    role_id = 1 if is_admin else 4
+    role = db_session.exec(select(Role).where(Role.id == role_id)).first()
+    if not role:
+        raise HTTPException(status_code=503, detail="Default roles not configured")
+    user_read = UserRead(
+        id=0 if not is_admin else -1,
+        user_uuid="user_site" if not is_admin else "user_admin",
+        username="Member" if not is_admin else "Admin",
+        first_name="Site" if not is_admin else "Admin",
+        last_name="",
+        email="site@nexo.local" if not is_admin else "admin@nexo.local",
+        avatar_image="",
+        bio="",
+        details={},
+        profile={},
+    )
+    org_read = OrganizationRead(
+        id=org.id,
+        org_uuid=org.org_uuid,
+        name=org.name,
+        description=org.description or "",
+        about=org.about,
+        socials=org.socials if org.socials is not None else {},
+        links=org.links if org.links is not None else {},
+        scripts=org.scripts if org.scripts is not None else {},
+        logo_image=org.logo_image,
+        thumbnail_image=org.thumbnail_image,
+        previews=org.previews,
+        explore=org.explore,
+        label=org.label,
+        slug=org.slug,
+        email=org.email or "",
+        config=getattr(org, "config", None),
+        creation_date=org.creation_date,
+        update_date=org.update_date,
+    )
+    role_read = RoleRead.model_validate(role)
+    roles = [UserRoleWithOrg(role=role_read, org=org_read)]
+    return UserSession(user=user_read, roles=roles)
+
+
 async def get_user_session(
     request: Request,
     db_session: Session,
     current_user: PublicUser | AnonymousUser,
 ) -> UserSession:
-    # Get user
+    # Password-only site access: no DB users; return synthetic session from default org + roles
+    if getattr(current_user, "user_uuid", None) == "user_site":
+        return await _synthetic_site_session(db_session, is_admin=False)
+    if getattr(current_user, "user_uuid", None) == "user_admin":
+        return await _synthetic_site_session(db_session, is_admin=True)
+
+    # Get user from DB
     statement = select(User).where(User.user_uuid == current_user.user_uuid)
     user = db_session.exec(statement).first()
 

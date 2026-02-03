@@ -1025,7 +1025,8 @@
           "roles": "Roles",
           "signups": "Signups & Invite Codes",
           "add": "Invite Members",
-          "audit_logs": "Audit Logs"
+          "audit_logs": "Audit Logs",
+          "site_access": "Site access"
         },
         "pages": {
           "users": {
@@ -1051,6 +1052,10 @@
           "audit_logs": {
             "title": "Audit Logs",
             "subtitle": "Track and monitor all activities within your organization"
+          },
+          "site_access": {
+            "title": "Site access",
+            "subtitle": "Update the passwords required to enter the site (user) and admin area"
           }
         },
         "mobile": {
@@ -1085,6 +1090,15 @@
             "button": "Remove User"
           }
         }
+      },
+      "site_access": {
+        "title": "Site access passwords",
+        "description": "Update the password used to enter the site (members) or the admin password (dashboard access). Leave a field empty to keep the current value.",
+        "site_password_label": "Site password (member access)",
+        "admin_password_label": "Admin password (dashboard access)",
+        "update_button": "Update passwords",
+        "enter_at_least_one": "Enter at least one new password",
+        "updated": "Passwords updated successfully"
       },
       "signups": {
         "title": "Join method",

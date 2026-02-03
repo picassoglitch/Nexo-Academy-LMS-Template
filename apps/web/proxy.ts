@@ -42,6 +42,14 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.rewrite(new URL(`${pathname}${search}`, req.url))
   }
 
+  // Registration disabled: redirect signup to login
+  if (pathname === '/signup') {
+    const signupParams = new URLSearchParams(search)
+    const orgslug = signupParams.get('orgslug') || cookie_orgslug || (hosting_mode === 'multi' ? (fullhost ? fullhost.replace(`.${getNEXO_DOMAIN_VAL()}`, '') : default_org) : default_org)
+    signupParams.set('orgslug', String(orgslug))
+    return NextResponse.redirect(new URL(`/login?${signupParams.toString()}`, req.url))
+  }
+
   if (auth_paths.includes(pathname)) {
     // Auth layout requires orgslug in query params. Ensure we always provide one:
     // - prefer explicit ?orgslug=

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useMediaQuery } from 'usehooks-ts'
 import { getUriWithOrg } from '@services/config/config'
-import { Monitor, ScanEye, SquareUserRound, UserPlus, Users, Shield } from 'lucide-react'
+import { Monitor, ScanEye, SquareUserRound, UserPlus, Users, Shield, KeyRound } from 'lucide-react'
 import BreadCrumbs from '@components/Dashboard/Misc/BreadCrumbs'
 import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { useOrg } from '@components/Contexts/OrgContext'
@@ -14,6 +14,7 @@ import OrgUsersAdd from '@components/Dashboard/Pages/Users/OrgUsersAdd/OrgUsersA
 import OrgUserGroups from '@components/Dashboard/Pages/Users/OrgUserGroups/OrgUserGroups'
 import OrgRoles from '@components/Dashboard/Pages/Users/OrgRoles/OrgRoles'
 import OrgAuditLogs from '@components/Dashboard/Pages/Org/OrgAuditLogs/OrgAuditLogs'
+import SiteAccessPasswords from '@components/Dashboard/Pages/Users/SiteAccessPasswords/SiteAccessPasswords'
 import { ShieldAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -55,6 +56,10 @@ function UsersSettingsPage(props: { params: Promise<SettingsParams> }) {
     if (params.subpage == 'audit-logs') {
       setH1Label(t('dashboard.users.settings.pages.audit_logs.title'))
       setH2Label(t('dashboard.users.settings.pages.audit_logs.subtitle'))
+    }
+    if (params.subpage == 'site-access') {
+      setH1Label(t('dashboard.users.settings.pages.site_access.title'))
+      setH2Label(t('dashboard.users.settings.pages.site_access.subtitle'))
     }
   }
 
@@ -194,7 +199,23 @@ function UsersSettingsPage(props: { params: Promise<SettingsParams> }) {
               </div>
             </div>
           </Link>
-          
+          <Link
+            href={
+              getUriWithOrg(params.orgslug, '') + `/dash/users/settings/site-access`
+            }
+          >
+            <div
+              className={`py-2 w-fit text-center border-black transition-all ease-linear ${params.subpage.toString() === 'site-access'
+                  ? 'border-b-4'
+                  : 'opacity-50'
+                } cursor-pointer`}
+            >
+              <div className="flex items-center space-x-2.5 mx-2">
+                <KeyRound size={16} />
+                <div>{t('dashboard.users.settings.tabs.site_access')}</div>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
       <motion.div
@@ -210,6 +231,7 @@ function UsersSettingsPage(props: { params: Promise<SettingsParams> }) {
         {params.subpage == 'usergroups' ? <OrgUserGroups /> : ''}
         {params.subpage == 'roles' ? <OrgRoles /> : ''}
         {params.subpage == 'audit-logs' ? <OrgAuditLogs /> : ''}
+        {params.subpage == 'site-access' ? <SiteAccessPasswords /> : ''}
       </motion.div>
     </div>
   )

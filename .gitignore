@@ -50,3 +50,6 @@ fly.toml
 # Generated runtime config
 apps/web/public/runtime-config.js
 apps/web/runtime-config.json
+
+# Site access passwords (stored by API; do not commit)
+data/site_access.json

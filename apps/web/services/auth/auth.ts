@@ -9,10 +9,27 @@ interface LoginAndGetTokenResponse {
 // ⚠️ mvp phase code
 // TODO : everything in this file need to be refactored including security issues fix
 
+/** Site login: single password. Uses site-login endpoint (no email). */
+export async function siteLogin(password: string): Promise<any> {
+  const HeadersConfig = new Headers({ 'Content-Type': 'application/json' })
+  const requestOptions: any = {
+    method: 'POST',
+    headers: HeadersConfig,
+    body: JSON.stringify({ password }),
+    redirect: 'follow',
+    credentials: 'include',
+  }
+  return fetch(`${getAPIUrl()}auth/site-login`, requestOptions)
+}
+
 export async function loginAndGetToken(
   username: any,
   password: any
 ): Promise<any> {
+  // Site access: single password (no email)
+  if (username === '__site_login__') {
+    return siteLogin(password)
+  }
   // Request Config
 
   // get origin
@@ -241,4 +258,31 @@ export async function signUpWithInviteCode(
   )
 
   return res
+}
+
+/** Admin: get site-passwords status (masked). */
+export async function getSitePasswords(accessToken: string): Promise<any> {
+  const res = await fetch(`${getAPIUrl()}auth/site-passwords`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    credentials: 'include',
+  })
+  return getResponseMetadata(res)
+}
+
+/** Admin: update site and/or admin password. */
+export async function updateSitePasswords(
+  accessToken: string,
+  body: { site_password?: string; admin_password?: string }
+): Promise<any> {
+  const res = await fetch(`${getAPIUrl()}auth/site-passwords`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  })
+  return getResponseMetadata(res)
 }

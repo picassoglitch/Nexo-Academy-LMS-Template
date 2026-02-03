@@ -10,7 +10,7 @@ import * as Form from '@radix-ui/react-form'
 import { useFormik } from 'formik'
 import { getOrgLogoMediaDirectory } from '@services/media/media'
 import React from 'react'
-import { AlertTriangle, UserRoundPlus } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from "next-auth/react"
@@ -32,60 +32,49 @@ const LoginClient = (props: LoginClientProps) => {
 
   const validate = (values: any) => {
     const errors: any = {}
-
-    if (!values.email) {
-      errors.email = t('validation.required')
-    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
-      errors.email = t('validation.invalid_email')
-    }
-
     if (!values.password) {
       errors.password = t('validation.required')
-    } else if (values.password.length < 8) {
-      errors.password = t('validation.password_min_length')
     }
-
     return errors
   }
 
   const [error, setError] = React.useState('')
   const formik = useFormik({
     initialValues: {
-      email: '',
       password: '',
     },
     validate,
     validateOnBlur: true,
     validateOnChange: true,
-    onSubmit: async (values, {validateForm, setErrors, setSubmitting}) => {
+    onSubmit: async (values, { validateForm, setErrors, setSubmitting }) => {
       setIsSubmitting(true)
-      const errors = await validateForm(values);
+      setError('')
+      const errors = await validateForm(values)
       if (Object.keys(errors).length > 0) {
-        setErrors(errors);
-        setSubmitting(false);
-        return;
+        setErrors(errors)
+        setIsSubmitting(false)
+        return
       }
-      
       const callbackUrl =
         searchParams?.get('callbackUrl') ||
         searchParams?.get('return_to') ||
         '/redirect_from_auth'
-
+      // Site access: single password; backend resolves site vs admin
       const res = await signIn('credentials', {
         redirect: false,
-        email: values.email,
+        email: '__site_login__',
         password: values.password,
-        callbackUrl
-      });
+        callbackUrl,
+      })
       if (res && res.error) {
-        setError(t('auth.wrong_email_password'));
-        setIsSubmitting(false);
+        setError(t('auth.wrong_email_password'))
+        setIsSubmitting(false)
       } else {
         await signIn('credentials', {
-          email: values.email,
+          email: '__site_login__',
           password: values.password,
-          callbackUrl
-        });
+          callbackUrl,
+        })
       }
     },
   })
@@ -150,61 +139,28 @@ const LoginClient = (props: LoginClientProps) => {
             </div>
           )}
           <FormLayout onSubmit={formik.handleSubmit}>
-            <FormField name="email">
-              <FormLabelAndMessage
-                label={t('auth.email')}
-                message={formik.errors.email}
-              />
-              <Form.Control asChild>
-                <Input
-                  onChange={formik.handleChange}
-                  value={formik.values.email}
-                  type="email"
-                  
-                />
-              </Form.Control>
-            </FormField>
-            {/* for password  */}
             <FormField name="password">
               <FormLabelAndMessage
                 label={t('auth.password')}
                 message={formik.errors.password}
               />
-
               <Form.Control asChild>
                 <Input
                   onChange={formik.handleChange}
                   value={formik.values.password}
                   type="password"
-                  
+                  placeholder=""
                 />
               </Form.Control>
             </FormField>
-            <div>
-              <Link
-                href={{ pathname: getUriWithoutOrg('/forgot'), query: props.org.slug ? { orgslug: props.org.slug } : null }}
-                passHref
-                className="text-xs text-gray-500 hover:underline"
-              >
-                {t('auth.forgot_password')}
-              </Link>
-            </div>
-            <div className="flex  py-4">
+            <div className="flex py-4">
               <Form.Submit asChild>
-                <button  className="w-full bg-black text-white font-bold text-center p-2 rounded-md shadow-md hover:cursor-pointer">
+                <button className="w-full bg-black text-white font-bold text-center p-2 rounded-md shadow-md hover:cursor-pointer">
                   {isSubmitting ? t('common.loading') : t('auth.login')}
                 </button>
               </Form.Submit>
             </div>
           </FormLayout>
-          <div className='flex h-0.5 rounded-2xl bg-slate-100 mt-5  mx-10'></div>
-          <div className='flex justify-center py-5 mx-auto'>{t('common.or')} </div>
-          <div className='flex flex-col space-y-4'>
-            <Link href={{ pathname: getUriWithoutOrg('/signup'), query: props.org.slug ? { orgslug: props.org.slug } : null }}  className="flex justify-center items-center py-3 text-md w-full bg-gray-800 text-gray-300 space-x-3 font-semibold text-center p-2 rounded-md shadow-sm hover:cursor-pointer">
-              <UserRoundPlus size={17} />
-              <span>{t('auth.sign_up')}</span>
-            </Link>
-          </div>
         </div>
       </div>
     </div>
