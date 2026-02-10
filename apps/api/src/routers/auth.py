@@ -72,7 +72,7 @@ async def site_login(
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
-        httponly=False,
+        httponly=True,
         domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
@@ -148,7 +148,7 @@ def refresh(response: Response, Authorize: AuthJWT = Depends()):
     response.set_cookie(
         key="access_token_cookie",
         value=new_access_token,
-        httponly=False,
+        httponly=True,
         domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
@@ -183,7 +183,7 @@ async def login(
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
-        httponly=False,
+        httponly=True,
         domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )
@@ -236,7 +236,7 @@ async def third_party_login(
     response.set_cookie(
         key="access_token_cookie",
         value=access_token,
-        httponly=False,
+        httponly=True,
         domain=cookie_domain,
         expires=int(timedelta(hours=8).total_seconds()),
     )

@@ -8,8 +8,10 @@ from pathlib import Path
 
 from src.security.security import security_hash_password, security_verify_password
 
-DEFAULT_SITE_PASSWORD = "sweetandsmart2026"
-DEFAULT_ADMIN_PASSWORD = "sweetandsmartadmin"
+# IMPORTANT: Always set NEXO_SITE_PASSWORD and NEXO_ADMIN_PASSWORD environment variables
+# These defaults are intentionally weak to force proper configuration
+DEFAULT_SITE_PASSWORD = "change_me_site_password_in_env"
+DEFAULT_ADMIN_PASSWORD = "change_me_admin_password_in_env"
 
 # JWT subject and user_uuid for password-only access (no DB users)
 SITE_ACCESS_SITE = "site"

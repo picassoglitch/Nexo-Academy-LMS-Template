@@ -70,11 +70,8 @@ const LoginClient = (props: LoginClientProps) => {
         setError(t('auth.wrong_email_password'))
         setIsSubmitting(false)
       } else {
-        await signIn('credentials', {
-          email: '__site_login__',
-          password: values.password,
-          callbackUrl,
-        })
+        // Successful login - redirect manually
+        router.push(callbackUrl)
       }
     },
   })
