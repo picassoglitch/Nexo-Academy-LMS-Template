@@ -1295,12 +1295,14 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                 ))}
               </nav>
               <div className="flex items-center gap-3 shrink-0">
-                <Link
-                  href={navbar.ctaHref}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#FF6200] px-4 py-2 text-sm font-extrabold text-white shadow-sm hover:bg-[#E85800] focus:outline-hidden focus:ring-2 focus:ring-[#FF6200]/30"
-                >
-                  {navbar.ctaLabel}
-                </Link>
+                {session.status === 'unauthenticated' && (
+                  <Link
+                    href={navbar.ctaHref}
+                    className="inline-flex items-center justify-center rounded-xl bg-[#FF6200] px-4 py-2 text-sm font-extrabold text-white shadow-sm hover:bg-[#E85800] focus:outline-hidden focus:ring-2 focus:ring-[#FF6200]/30"
+                  >
+                    {navbar.ctaLabel}
+                  </Link>
+                )}
               </div>
             </div>
           </div>
