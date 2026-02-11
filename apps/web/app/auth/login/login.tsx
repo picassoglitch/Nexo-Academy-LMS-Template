@@ -35,12 +35,14 @@ const LoginClient = (props: LoginClientProps) => {
     if (!values.password) {
       errors.password = t('validation.required')
     }
+    // Email is optional - if provided, uses DB user login; if empty, uses password-only access
     return errors
   }
 
   const [error, setError] = React.useState('')
   const formik = useFormik({
     initialValues: {
+      email: '',
       password: '',
     },
     validate,
@@ -59,10 +61,11 @@ const LoginClient = (props: LoginClientProps) => {
         searchParams?.get('callbackUrl') ||
         searchParams?.get('return_to') ||
         '/redirect_from_auth'
-      // Site access: single password; backend resolves site vs admin
+      // If email is provided, use DB user login; otherwise use password-only access
+      const loginEmail = values.email.trim() || '__site_login__'
       const res = await signIn('credentials', {
         redirect: false,
-        email: '__site_login__',
+        email: loginEmail,
         password: values.password,
         callbackUrl,
       })
@@ -136,6 +139,20 @@ const LoginClient = (props: LoginClientProps) => {
             </div>
           )}
           <FormLayout onSubmit={formik.handleSubmit}>
+            <FormField name="email">
+              <FormLabelAndMessage
+                label={t('auth.email')}
+                message={formik.errors.email}
+              />
+              <Form.Control asChild>
+                <Input
+                  onChange={formik.handleChange}
+                  value={formik.values.email}
+                  type="email"
+                  placeholder="Optional - leave empty for quick access"
+                />
+              </Form.Control>
+            </FormField>
             <FormField name="password">
               <FormLabelAndMessage
                 label={t('auth.password')}
