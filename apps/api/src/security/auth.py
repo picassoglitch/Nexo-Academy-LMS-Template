@@ -21,9 +21,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 #### JWT Auth ####################################################
 class Settings(BaseModel):
     authjwt_secret_key: str = "secret" if isDevModeEnabled() else SECRET_KEY
-    # This project uses explicit Bearer tokens from the web app.
-    # Avoid reading arbitrary cookies (e.g. NextAuth session cookies) as JWTs.
-    authjwt_token_location = {"headers"}
+    # Allow both headers (for access tokens) and cookies (for refresh tokens)
+    authjwt_token_location = {"headers", "cookies"}
     authjwt_cookie_csrf_protect = False
     authjwt_access_token_expires = (
         False if isDevModeEnabled() else timedelta(hours=8).total_seconds()
