@@ -13,8 +13,7 @@ const nextConfig = {
     ]
   },
   reactStrictMode: false,
-  output: 'standalone',
-  // Ensure consistent build IDs across multiple pods in Kubernetes
+  // Ensure consistent build IDs across multiple instances
   generateBuildId: async () => {
     return process.env.BUILD_ID || 'learnhouse-production'
   },
