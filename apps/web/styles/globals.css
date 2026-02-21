@@ -336,3 +336,43 @@ layer(base);
   position: fixed !important;
   transform: none !important;
 }
+
+/* ============================================================
+   Global dark-mode color remaps
+   Avoids editing every individual component that has hardcoded
+   bg-white / text-gray-* / border-gray-* Tailwind utilities.
+   These rules have higher specificity (.dark .utility) than
+   plain Tailwind utilities (.utility), so they win cleanly.
+   ============================================================ */
+
+/* Backgrounds */
+.dark .bg-white        { background-color: hsl(var(--card)); }
+.dark .bg-gray-50      { background-color: hsl(0 0% 6%); }
+.dark .bg-gray-100     { background-color: hsl(0 0% 9%); }
+.dark .bg-gray-200     { background-color: hsl(0 0% 12%); }
+
+/* Text */
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-black      { color: hsl(var(--foreground)); }
+.dark .text-gray-800   { color: hsl(45 8% 82%); }
+.dark .text-gray-700   { color: hsl(0 0% 68%); }
+.dark .text-gray-600   { color: hsl(0 0% 56%); }
+.dark .text-gray-500   { color: hsl(0 0% 45%); }
+.dark .text-gray-400   { color: hsl(0 0% 36%); }
+
+/* Borders */
+.dark .border-gray-300 { border-color: hsl(0 0% 22%); }
+.dark .border-gray-200 { border-color: hsl(var(--border)); }
+.dark .border-gray-100 { border-color: hsl(0 0% 13%); }
+
+/* Divide */
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--border)); }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(0 0% 13%); }
+
+/* Ring / outline */
+.dark .ring-gray-200   { --tw-ring-color: hsl(var(--border)); }
+
+/* Placeholder text */
+.dark .placeholder-gray-400::placeholder { color: hsl(0 0% 36%); }
+.dark .placeholder-gray-500::placeholder { color: hsl(0 0% 45%); }
