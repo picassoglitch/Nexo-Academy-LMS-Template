@@ -20,7 +20,7 @@ export default function RootLayout({
   }
 
   return (
-    <html className="" lang="en">
+    <html className="dark" lang="en">
       <head />
       <body>
         {isDevEnv ? '' : (

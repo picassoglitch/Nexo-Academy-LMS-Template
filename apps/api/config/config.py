@@ -37,6 +37,7 @@ class AIConfig(BaseModel):
 class S3ApiConfig(BaseModel):
     bucket_name: str | None
     endpoint_url: str | None
+    region: str | None = None
 
 
 class ContentDeliveryConfig(BaseModel):
@@ -208,8 +209,9 @@ def get_nexo_config() -> NexoConfig:
         or "filesystem"
     )  # default to filesystem
 
-    env_bucket_name = os.environ.get("NEXO_S3_API_BUCKET_NAME")
-    env_endpoint_url = os.environ.get("NEXO_S3_API_ENDPOINT_URL")
+    env_bucket_name = _first_env("NEXO_S3_API_BUCKET_NAME", "AWS_S3_BUCKET_NAME")
+    env_endpoint_url = _first_env("NEXO_S3_API_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL")
+    env_s3_region = _first_env("NEXO_S3_REGION", "AWS_DEFAULT_REGION", "AWS_REGION")
     bucket_name = (
         yaml_config.get("hosting_config", {})
         .get("content_delivery", {})
@@ -222,6 +224,12 @@ def get_nexo_config() -> NexoConfig:
         .get("s3api", {})
         .get("endpoint_url")
     ) or env_endpoint_url
+    s3_region = (
+        yaml_config.get("hosting_config", {})
+        .get("content_delivery", {})
+        .get("s3api", {})
+        .get("region")
+    ) or env_s3_region
 
     # Content (uploads) root directory
     # NOTE: Render containers lose their filesystem on restart unless you attach a persistent disk.
@@ -236,7 +244,7 @@ def get_nexo_config() -> NexoConfig:
     content_delivery = ContentDeliveryConfig(
         type=content_delivery_type,  # type: ignore
         filesystem_root=content_root if content_delivery_type == "filesystem" else None,
-        s3api=S3ApiConfig(bucket_name=bucket_name, endpoint_url=endpoint_url),  # type: ignore
+        s3api=S3ApiConfig(bucket_name=bucket_name, endpoint_url=endpoint_url, region=s3_region),  # type: ignore
     )
 
     # Database config
@@ -269,8 +277,8 @@ def get_nexo_config() -> NexoConfig:
     ).get("redis_connection_string")
 
     # Mailing config
-    env_resend_api_key = _first_env("NEXO_RESEND_API_KEY", "EMAIL_API_KEY")
-    env_system_email_address = _first_env("NEXO_SYSTEM_EMAIL_ADDRESS")
+    env_resend_api_key = _first_env("NEXO_RESEND_API_KEY", "RESEND_API_KEY", "EMAIL_API_KEY")
+    env_system_email_address = _first_env("NEXO_SYSTEM_EMAIL_ADDRESS", "RESEND_FROM_EMAIL")
     resend_api_key = env_resend_api_key or yaml_config.get("mailing_config", {}).get(
         "resend_api_key"
     )

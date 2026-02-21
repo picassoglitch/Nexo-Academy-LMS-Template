@@ -23,17 +23,18 @@ def _get_filesystem_root() -> str:
     root = getattr(nexo_config.hosting_config.content_delivery, "filesystem_root", None) or "content"
     return str(root).rstrip("/\\")
 
-def _get_s3_bucket_and_endpoint() -> tuple[str, str | None]:
+def _get_s3_bucket_and_endpoint() -> tuple[str, str | None, str | None]:
     nexo_config = get_nexo_config()
     s3cfg = nexo_config.hosting_config.content_delivery.s3api
     bucket = (getattr(s3cfg, "bucket_name", None) or "").strip()
-    endpoint = getattr(s3cfg, "endpoint_url", None)
+    endpoint = getattr(s3cfg, "endpoint_url", None) or None
+    region = getattr(s3cfg, "region", None) or None
     if not bucket:
         raise HTTPException(
             status_code=500,
             detail="S3 content delivery is enabled but NEXO_S3_API_BUCKET_NAME is not configured",
         )
-    return bucket, endpoint
+    return bucket, endpoint, region
 
 
 async def upload_file(
@@ -119,13 +120,16 @@ async def upload_content(
 
     elif content_delivery == "s3api":
         # Upload directly to S3 from memory.
-        bucket_name, endpoint_url = _get_s3_bucket_and_endpoint()
+        bucket_name, endpoint_url, region = _get_s3_bucket_and_endpoint()
         key = f"content/{type_of_dir}/{uuid}/{directory}/{file_and_format}"
 
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=endpoint_url,
-        )
+        s3_kwargs: dict = {"service_name": "s3"}
+        if endpoint_url:
+            s3_kwargs["endpoint_url"] = endpoint_url
+        if region:
+            s3_kwargs["region_name"] = region
+
+        s3 = boto3.client(**s3_kwargs)
 
         try:
             s3.put_object(Bucket=bucket_name, Key=key, Body=file_binary)
