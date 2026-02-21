@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd email field to login form for database user login\n\n- Add optional email field to support both login methods\n- Password-only access: leave email empty \\(quick access\\)\n- Database user login: enter email + password \\(e.g., picassoglitch@gmail.com\\)\n- Backend already supports both /site-login and /login endpoints\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
