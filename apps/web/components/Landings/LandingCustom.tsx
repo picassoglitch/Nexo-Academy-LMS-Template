@@ -266,7 +266,7 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
             role: 'Freelancer',
             location: 'Guadalajara',
             quote:
-              'Dejé de “investigar” y empecé a implementar. Ajusté mi oferta con IA y cerré clientes recurrentes.',
+              'Dejé de "investigar" y empecé a implementar. Ajusté mi oferta con IA y cerré clientes recurrentes.',
             metricLabel: 'Resultado',
             metricValue: '5 clientes recurrentes',
             colorKey: 'blue',
@@ -306,7 +306,7 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
         ],
         videoLabel: 'Video: Conoce cómo funciona Nexo (próximamente)',
         body: [
-          'Creamos Nexo para personas que quieren usar IA de forma práctica y medible. Aquí no vendemos “secretos”: te damos un sistema claro para aprender, implementar y escalar.',
+          'Creamos Nexo para personas que quieren usar IA de forma práctica y medible. Aquí no vendemos "secretos": te damos un sistema claro para aprender, implementar y escalar.',
           'Únete hoy y avanza con claridad, soporte y una comunidad que ejecuta.',
         ],
       },
@@ -645,12 +645,12 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
       }
       case 'testimonialsGrid': {
         return (
-          <section key=”testimonialsGrid” className=”w-full py-14 sm:py-20”>
-            <Reveal className=”mx-auto max-w-6xl px-4 sm:px-6”>
-              <h2 className=”text-center text-3xl sm:text-4xl font-extrabold tracking-tight text-[#ede8d8]”>
+          <section key="testimonialsGrid" className="w-full py-14 sm:py-20">
+            <Reveal className="mx-auto max-w-6xl px-4 sm:px-6">
+              <h2 className="text-center text-3xl sm:text-4xl font-extrabold tracking-tight text-[#ede8d8]">
                 {section.title}
               </h2>
-              <div className=”mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2”>
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
                 {section.items.slice(0, 4).map((it, idx) => {
                   const initials = it.name
                     .split(' ')
@@ -661,23 +661,23 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                   return (
                     <div
                       key={idx}
-                      className=”rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-sm hover:-translate-y-1 hover:shadow-[0px_4px_20px_rgba(201,168,76,0.1)] transition”
+                      className="rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-sm hover:-translate-y-1 hover:shadow-[0px_4px_20px_rgba(201,168,76,0.1)] transition"
                     >
-                      <div className=”flex items-center gap-3”>
-                        <div className=”h-10 w-10 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center font-extrabold text-[#c9a84c]”>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-[#c9a84c]/10 border border-[#c9a84c]/20 flex items-center justify-center font-extrabold text-[#c9a84c]">
                           {initials || 'NA'}
                         </div>
                         <div>
-                          <div className=”font-bold text-[#ede8d8]”>{it.name}</div>
-                          <div className=”text-xs text-white/50”>
+                          <div className="font-bold text-[#ede8d8]">{it.name}</div>
+                          <div className="text-xs text-white/50">
                             {it.role}
                             {it.location ? ` · ${it.location}` : ''}
                           </div>
                         </div>
                       </div>
-                      <p className=”mt-4 text-sm text-white/60 leading-relaxed”>”{it.quote}”</p>
-                      <div className=”mt-4 rounded-xl bg-[#0a0a0a] border border-white/5 p-4”>
-                        <div className=”text-xs text-white/40”>{it.metricLabel}</div>
+                      <p className="mt-4 text-sm text-white/60 leading-relaxed">"{it.quote}"</p>
+                      <div className="mt-4 rounded-xl bg-[#0a0a0a] border border-white/5 p-4">
+                        <div className="text-xs text-white/40">{it.metricLabel}</div>
                         <div className={`text-lg font-extrabold ${colorClass(it.colorKey)}`}>{it.metricValue}</div>
                       </div>
                     </div>
@@ -725,17 +725,17 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
       }
       case 'pricing': {
         return (
-          <section key=”pricing” className=”w-full py-14 sm:py-20”>
+          <section key="pricing" className="w-full py-14 sm:py-20">
             {/* Map Programas anchor to pricing (requested anchors include both) */}
-            <div id=”programas” />
+            <div id="programas" />
             <div id={section.id || 'precios'} />
-            <Reveal className=”mx-auto max-w-6xl px-4 sm:px-6”>
-              <h2 className=”text-center text-3xl sm:text-4xl font-extrabold tracking-tight text-[#ede8d8]”>
+            <Reveal className="mx-auto max-w-6xl px-4 sm:px-6">
+              <h2 className="text-center text-3xl sm:text-4xl font-extrabold tracking-tight text-[#ede8d8]">
                 {section.title}
               </h2>
-              <p className=”mt-3 text-center text-white/60”>{section.subtitle}</p>
+              <p className="mt-3 text-center text-white/60">{section.subtitle}</p>
 
-              <div className=”mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3”>
+              <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {section.plans.map((plan, idx) => {
                   const isPro = Boolean(plan.badge)
                   const isStarter = plan.name?.toLowerCase() === 'starter'
@@ -773,33 +773,33 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                           : 'border-white/10 bg-[#111111]'
                       }`}
                     >
-                      <div className=”flex items-center justify-between”>
-                        <div className=”text-lg font-extrabold text-[#ede8d8]”>{plan.name}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-lg font-extrabold text-[#ede8d8]">{plan.name}</div>
                         {plan.badge ? (
-                          <Badge className=”border border-[#c9a84c]/40 bg-[#c9a84c]/15 text-[#c9a84c] text-sm px-3 py-1 font-extrabold”>
+                          <Badge className="border border-[#c9a84c]/40 bg-[#c9a84c]/15 text-[#c9a84c] text-sm px-3 py-1 font-extrabold">
                             {plan.badge}
                           </Badge>
                         ) : null}
                       </div>
-                      <div className=”mt-4”>
-                        <span className=”text-4xl font-extrabold text-[#ede8d8]”>{plan.price}</span>
-                        {plan.period ? <span className=”ml-2 text-sm text-white/50”>{plan.period}</span> : null}
+                      <div className="mt-4">
+                        <span className="text-4xl font-extrabold text-[#ede8d8]">{plan.price}</span>
+                        {plan.period ? <span className="ml-2 text-sm text-white/50">{plan.period}</span> : null}
                         {isPro ? (
-                          <div className=”mt-2 text-sm font-semibold text-white/60”>
+                          <div className="mt-2 text-sm font-semibold text-white/60">
                             El plan elegido por el 87% de nuestros miembros
                           </div>
                         ) : null}
-                        {/* Optional (if Stripe installments/MSI is enabled): add a small “MSI” line here per plan.
-                            Example: Starter → “o en 6 MSI desde ~$66/mes”, PRO → “~$166/mes”, Operator → “~$666/mes” */}
+                        {/* Optional (if Stripe installments/MSI is enabled): add a small "MSI" line here per plan.
+                            Example: Starter → "o en 6 MSI desde ~$66/mes", PRO → "~$166/mes", Operator → "~$666/mes" */}
                       </div>
 
-                      <ul className=”mt-6 space-y-3”>
+                      <ul className="mt-6 space-y-3">
                         {plan.features.map((f, fIdx) => (
-                          <li key={fIdx} className=”flex items-start gap-2”>
+                          <li key={fIdx} className="flex items-start gap-2">
                             {f.state === 'included' ? (
-                              <CheckCircle2 className=”mt-0.5 h-5 w-5 text-emerald-400” />
+                              <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
                             ) : (
-                              <XCircle className=”mt-0.5 h-5 w-5 text-white/20” />
+                              <XCircle className="mt-0.5 h-5 w-5 text-white/20" />
                             )}
                             <span
                               className={`text-sm ${
@@ -814,7 +814,7 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
 
                       <a
                         href={checkoutHref || plan.buttonHref}
-                        className=”mt-7 inline-flex w-full items-center justify-center rounded-xl bg-[#c9a84c] px-5 py-3 font-extrabold text-[#0a0a0a] shadow-sm hover:bg-[#b8933f] focus:outline-hidden focus:ring-2 focus:ring-[#c9a84c]/30”
+                        className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-[#c9a84c] px-5 py-3 font-extrabold text-[#0a0a0a] shadow-sm hover:bg-[#b8933f] focus:outline-hidden focus:ring-2 focus:ring-[#c9a84c]/30"
                       >
                         {ctaLabel}
                       </a>
@@ -823,26 +823,26 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
                 })}
               </div>
 
-              <div className=”mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/60”>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/60">
                 {section.footerHighlights.map((h, idx) => (
-                  <span key={idx} className=”inline-flex items-center gap-2”>
-                    <CheckCircle2 className=”h-4 w-4 text-emerald-400” />
+                  <span key={idx} className="inline-flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     {h}
                   </span>
                 ))}
               </div>
 
-              <div className=”mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-white/60”>
-                <span className=”inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2”>
-                  <CreditCard className=”h-4 w-4 text-white/50” />
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-white/60">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                  <CreditCard className="h-4 w-4 text-white/50" />
                   Stripe
                 </span>
-                <span className=”inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2”>
-                  <ShieldCheck className=”h-4 w-4 text-emerald-400” />
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
                   Pago seguro
                 </span>
-                <span className=”inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2”>
-                  <Lock className=”h-4 w-4 text-[#c9a84c]” />
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                  <Lock className="h-4 w-4 text-[#c9a84c]" />
                   SSL
                 </span>
               </div>
@@ -886,33 +886,33 @@ function LandingCustom({ landing, orgslug, orgId }: LandingCustomProps) {
       }
       case 'community': {
         return (
-          <section key=”community” id={section.id || 'comunidad'} className=”w-full py-14 sm:py-20”>
-            <Reveal className=”mx-auto max-w-6xl px-4 sm:px-6”>
-              <div className=”rounded-2xl border border-[#c9a84c]/20 bg-[#111111] p-6 sm:p-10 shadow-[0px_4px_30px_rgba(201,168,76,0.08)]”>
-                <div className=”grid grid-cols-1 gap-10 lg:grid-cols-2”>
+          <section key="community" id={section.id || 'comunidad'} className="w-full py-14 sm:py-20">
+            <Reveal className="mx-auto max-w-6xl px-4 sm:px-6">
+              <div className="rounded-2xl border border-[#c9a84c]/20 bg-[#111111] p-6 sm:p-10 shadow-[0px_4px_30px_rgba(201,168,76,0.08)]">
+                <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
                   <div>
-                    <h2 className=”text-3xl font-extrabold tracking-tight text-[#ede8d8]”>{section.title}</h2>
-                    <ul className=”mt-6 space-y-3”>
+                    <h2 className="text-3xl font-extrabold tracking-tight text-[#ede8d8]">{section.title}</h2>
+                    <ul className="mt-6 space-y-3">
                       {section.bullets.map((b, idx) => (
-                        <li key={idx} className=”flex items-start gap-2 text-white/70”>
-                          <CheckCircle2 className=”mt-0.5 h-5 w-5 text-emerald-400” />
-                          <span className=”text-sm sm:text-base”>{b}</span>
+                        <li key={idx} className="flex items-start gap-2 text-white/70">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
+                          <span className="text-sm sm:text-base">{b}</span>
                         </li>
                       ))}
                     </ul>
                     <a
                       href={section.buttonHref}
-                      className=”mt-7 inline-flex items-center justify-center rounded-xl bg-[#c9a84c] px-6 py-3 font-extrabold text-[#0a0a0a] shadow-sm hover:bg-[#b8933f] focus:outline-hidden focus:ring-2 focus:ring-[#c9a84c]/30”
+                      className="mt-7 inline-flex items-center justify-center rounded-xl bg-[#c9a84c] px-6 py-3 font-extrabold text-[#0a0a0a] shadow-sm hover:bg-[#b8933f] focus:outline-hidden focus:ring-2 focus:ring-[#c9a84c]/30"
                     >
                       {section.buttonLabel}
-                      <ChevronRight className=”ml-2 h-4 w-4” />
+                      <ChevronRight className="ml-2 h-4 w-4" />
                     </a>
                   </div>
 
-                  <div className=”rounded-2xl bg-white/5 border border-white/5 p-6”>
-                    <div className=”text-sm text-white/60”>”{section.testimonial.quote}”</div>
-                    <div className=”mt-4 font-bold text-[#ede8d8]”>{section.testimonial.name}</div>
-                    <div className=”text-xs text-white/40”>{section.testimonial.meta}</div>
+                  <div className="rounded-2xl bg-white/5 border border-white/5 p-6">
+                    <div className="text-sm text-white/60">"{section.testimonial.quote}"</div>
+                    <div className="mt-4 font-bold text-[#ede8d8]">{section.testimonial.name}</div>
+                    <div className="text-xs text-white/40">{section.testimonial.meta}</div>
                   </div>
                 </div>
               </div>
